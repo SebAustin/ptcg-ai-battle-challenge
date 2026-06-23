@@ -1,0 +1,32 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Byte-compiled / caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build artifacts (regenerate with `make bundle` / tools/bundle.py)
+dist/
+
+# Tuner output
+tools/best_config.env
+
+# Competition Data — MUST NOT be redistributed (Rules §2.4). Download locally
+# with `make data`; never commit the card files or images.
+data/*.csv
+data/*.pdf
+data/*.json
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Local agent/session state
+.remember/
+.claude/

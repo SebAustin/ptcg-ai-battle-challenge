@@ -1,0 +1,25 @@
+# Development / evaluation environment for the PTCG battle agent.
+#
+# IMPORTANT: the SUBMITTED agent (ptcg_bot/ -> dist/main.py) needs NONE of these.
+# It is pure standard library; tools/bundle.py freezes tuned weights to literals
+# and drops `os`. These packages are only for loading data, running the engine
+# locally, the test suite, figures, and submitting.
+#
+# Pinned to the versions this project was developed and validated against.
+
+# Unit test runner (tests/).
+pytest>=8.0,<9
+
+# Kaggle CLI — download competition data + upload the submission (see SUBMIT.md).
+# This machine authenticates via the new OAuth flow (~/.kaggle/credentials.json),
+# which requires the 2.x CLI.
+kaggle>=2.2
+
+# Writeup figures (writeup/figures.py). Not needed by the agent or the engine.
+matplotlib>=3.8
+
+# --- Simulator (TO WIRE IN WEEK 2) ------------------------------------------
+# The official PTCG battle engine is not yet on this machine. Once obtained,
+# pin it here and implement ptcg_bot/engine_adapter.py against its schema.
+# If it ships as a kaggle-environments environment, that dep goes here too.
+# kaggle-environments==<TBD>
