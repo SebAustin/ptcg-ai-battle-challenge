@@ -97,11 +97,20 @@ simulator / competition page resolves the open items.
       *varied legal sample*; one determinization per world for genuine PIMC diversity) →
       **~52%** (31W/29L over 60 games — **parity, within noise of 50%**).
     So realistic determinization moved search from behind to level with the heuristic, but
-    it is still not a *decisive* win and it is slower — **therefore `agent` (shipped) stays the
-    heuristic and `search_agent` remains experimental.** Engine RNG is un-seeded, so all
-    figures are run-to-run ranges. The remaining levers to break past parity: deeper/terminal
-    rollouts and more worlds (both currently capped for speed — `_WORLDS`/`_DEPTH` in
-    `search.py`), a learned opponent deck prior, and a tempo-aware leaf evaluator.
+    it is still not a *decisive* win and it is slower. We then pushed for a decisive win:
+    uncapped `_WORLDS`/`_DEPTH` (now env-tunable via `config`, bounded only by the wall-clock
+    `TURN_DEADLINE_S`) and swept — **deeper rollouts (depth 30) and more worlds stayed at ~50%.**
+    Diagnostic (instrumented one game): search picks a *different* MAIN option from the
+    heuristic **65% of the time**, yet the net win-rate is ~50% — so its different choices are
+    **neutral, not better**. That localizes the ceiling: it is **the value estimate**
+    (leaf evaluator + determinization noise), NOT search depth/breadth. Flat rollout with an
+    attack-first *base policy* provably converges toward that base policy's own value, so more
+    rollouts can't exceed it by much. **Therefore `agent` (shipped) stays the heuristic and
+    `search_agent` remains experimental at parity.** Engine RNG is un-seeded → figures are
+    run-to-run ranges. The genuine path to a decisive win is a **stronger value function** — a
+    learned leaf evaluator (train on self-play) rather than the hand-crafted positional one —
+    which is a separate, larger effort with uncertain payoff given the heuristic already wins
+    ~100% vs random. That is the honest stopping point for the hand-crafted search line.
 
 16. **`main.agent` is a v1 heuristic option policy.** `agent(obs_dict) -> list[int]` is
     pure-stdlib and reads the raw observation dict (no `cg` import), so it drops into the

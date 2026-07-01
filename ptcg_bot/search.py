@@ -30,9 +30,11 @@ from . import config as cfg
 _MAX_OPTIONS = 12
 _SELECT_TYPE_MAIN = 0
 
-# Kept modest so a MAIN decision stays well under the turn deadline.
-_WORLDS = min(6, max(1, cfg.SEARCH_WORLDS))
-_DEPTH = min(5, max(1, cfg.SEARCH_ROLLOUT_DEPTH))
+# Worlds/rollout-depth come from config (env-tunable via PTCG_SEARCH_WORLDS /
+# PTCG_SEARCH_ROLLOUT_DEPTH). The real cap is the wall-clock deadline below, so
+# these can be set high — the search does as many rollouts as fit the turn budget.
+_WORLDS = max(1, cfg.SEARCH_WORLDS)
+_DEPTH = max(1, cfg.SEARCH_ROLLOUT_DEPTH)
 
 # OptionType ids (engine cg/api.py). Rollout base policy = attack-first.
 _ATTACK = 13

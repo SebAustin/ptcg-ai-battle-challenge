@@ -13,8 +13,9 @@ plus the accompanying **Strategy** writeup. Two linked submissions:
 > `make verify` runs the **live engine**; the agent plays full legal games against it. A K-world
 > rollout **PIMC** `search`/`belief` layer is built and A/B-tested — with realistic per-world
 > determinization it reached **parity** with the shipped heuristic (~52% in mirror A/B, within
-> noise) but not a *decisive* win, so the heuristic still ships. Deeper/terminal rollouts + a
-> learned opponent prior are the next lever (see ASSUMPTIONS.md).
+> noise) but not a *decisive* win, so the heuristic still ships. Sweeping deeper rollouts / more
+> worlds stays at ~50% — the ceiling is the **value estimate**, not search depth; a **learned
+> leaf evaluator** (not more rollouts) is the real lever (see ASSUMPTIONS.md).
 >
 > **Engine:** the simulator (`pokemon-tcg-ai-battle`: `sample_submission/cg/` + native `libcg`)
 > is fetched locally into the gitignored `engine/` via `make engine` (after accepting that
@@ -71,7 +72,7 @@ ptcg_bot/        the submitted agent (pure stdlib once bundled)
   engine_adapter.py  obs dict -> GameState + action encoding  [wired, tested vs live engine]
   main.py        agent entrypoint — attack-first heuristic (shipped; consistently beats random)  [done]
   search.py/belief.py  K-world rollout PIMC + realistic determinization  [built; parity w/ heuristic, not shipped]
-  legal  [next — typed option semantics; deeper/terminal rollouts + opponent prior]
+  legal  [next]; a learned leaf evaluator (not more rollouts) is what would beat the heuristic
 deckbuilder/     offline deck construction & optimization (the 20% deliverable)
 tools/           eval harness: verify_env/tournament/soak/tune/bundle/run_match
 tests/           pytest  [test_cards.py passing]

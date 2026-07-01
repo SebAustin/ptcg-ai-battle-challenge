@@ -181,11 +181,18 @@ K-world rollouts → **~52%** (31W/29L over 60 games) after **realistic determin
 unseen cards drawn from our actual decklist minus what the observation shows, and the
 opponent's from a varied legal sample, one world at a time. That is **parity with the
 heuristic, within noise — a real climb from behind to level, but not yet a decisive win**, and
-it is slower. So the heuristic remains the shipped agent. The honest next levers are
-deeper/terminal rollouts and more worlds (both capped for speed today), a learned opponent
-deck prior, and a tempo-aware leaf. Runtime card metadata (building the pool from the engine's
-own card data rather than our offline CSV, absent in the Kaggle runtime) is also a tracked
-follow-up in `ASSUMPTIONS.md`.
+it is slower. We then pushed explicitly for a decisive win — uncapping worlds/rollout-depth
+(now bounded only by the turn clock) and sweeping — but **deeper rollouts and more worlds held
+at ~50%**. Instrumenting a game explained why: search picks a *different* MAIN move from the
+heuristic **65% of the time, yet nets ~50%** — its different choices are neutral, not better.
+The ceiling is therefore the **value estimate**, not search depth or breadth: flat rollout with
+an attack-first base policy converges toward that base policy's own value. The genuine path to a
+decisive edge is a **learned leaf evaluator** (trained on self-play) rather than the
+hand-crafted positional one — a separate, larger effort with uncertain payoff given the
+heuristic already wins ~100% vs random. So the heuristic remains the shipped agent, and this is
+the honest stopping point for the hand-crafted search line. (Runtime card metadata — building the
+pool from the engine's card data rather than our offline CSV, absent in the Kaggle runtime — is a
+smaller tracked follow-up in `ASSUMPTIONS.md`.)
 
 ## 6. What's next
 
