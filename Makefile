@@ -19,10 +19,10 @@ PIPAUDIT := $(VENV)/bin/pip-audit
 
 # Our Python lives here — scope the tools to these so stray local tooling
 # (.cursor/, editor scratch, the gitignored engine/) is never linted/formatted.
-SRC := ptcg_bot deckbuilder tools tests
+SRC := ptcg_bot deckbuilder tools tests writeup
 
 .DEFAULT_GOAL := help
-.PHONY: help setup data engine test lint format typecheck audit security ci deck verify tournament soak bundle tune check submit freeze clean
+.PHONY: help setup data engine test lint format typecheck audit security ci deck figures verify tournament soak bundle tune check submit freeze clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -79,6 +79,9 @@ ci: lint typecheck audit security test ## Engine-free gate CI runs (lint + types
 
 deck: ## Build the submission deck.csv into dist/ (offline deckbuilder)
 	$(PY) -m tools.build_deck
+
+figures: ## Generate the writeup figures into writeup/figures/ (needs data)
+	$(PY) -m writeup.figures
 
 # --- Harness targets (tools land per the plan; guarded until they exist) -----
 verify: ## Validate our model against the LIVE engine (needs `make engine`; plan §W2-3)

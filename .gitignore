@@ -15,6 +15,9 @@ dist/
 # Tuner output
 tools/best_config.env
 
+# Generated writeup figures (regenerate with `make figures`)
+writeup/figures/
+
 # Competition Data — MUST NOT be redistributed (Rules §2.4). Download locally
 # with `make data`; never commit the card files or images.
 data/*.csv
