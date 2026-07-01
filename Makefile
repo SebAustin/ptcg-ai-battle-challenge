@@ -93,8 +93,8 @@ soak: ## Robustness soak: no crash / no timeout over many seeds (plan §W4)
 tune: ## Coordinate-descent weight tuner -> tools/best_config.env (plan §W6)
 	@test -f tools/tune.py && $(PY) -u tools/tune.py $(ARGS) || echo "[pending] tools/tune.py — plan §W6"
 
-bundle: ## Build dist/main.py (freeze weights) + submission tarballs (plan §W4)
-	@test -f tools/bundle.py && $(PY) tools/bundle.py || echo "[pending] tools/bundle.py — plan §W4"
+bundle: ## Package dist/submission/ (main.py + deck.csv + ptcg_bot + cg) + zip (needs engine+data)
+	$(PY) -m tools.bundle
 
 check: test verify bundle ## Full local gate: tests + engine verify + bundle
 
