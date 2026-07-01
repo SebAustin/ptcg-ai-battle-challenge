@@ -171,14 +171,18 @@ signal for catching gross policy errors (which it did), not a claim of strength 
 competent opponent. Because the engine's RNG is un-seeded, the figures are representative
 single runs, not fixed constants (attack-first ≈75–100% vs random).
 
-A first cut of the IS-MCTS layer **is now implemented** — a one-ply determinized lookahead
-(`ptcg_bot/search.py` + `belief.py`) over the engine's `search_begin/step/end` hooks — and
-was A/B-tested against the shipped heuristic. It **currently loses** (≈15–45% vs the
-heuristic): with a single determinized world and a purely positional leaf evaluator, one-ply
-search drifts back toward over-developing. So the heuristic remains the shipped agent, and
-the honest next step is scaling to multi-world PIMC with a tempo-aware evaluator. Runtime
-card metadata (building the pool from the engine's own card data rather than our offline
-CSV, absent in the Kaggle runtime) is also a tracked follow-up in `ASSUMPTIONS.md`.
+The IS-MCTS layer **is implemented** (`ptcg_bot/search.py` + `belief.py`): a K-world
+determinized **rollout PIMC** over the engine's `search_begin/step/end` hooks — for each MAIN
+option, run K rollouts with an attack-first base policy to depth D and average the leaf value
+from our fixed root perspective. A/B-tested against the shipped heuristic (mirror, sides
+alternated), it climbed from **~10%** (a naïve one-ply version with a perspective bug and a
+single world) to **~40–47%** once the leaf was scored from the correct player and rollouts
+spanned K worlds — i.e. **roughly on par with the heuristic, but not a clear win**, and
+slower. So the heuristic remains the shipped agent. The honest next levers are a realistic
+per-world deck-prior determinization (the current one fills with valid filler IDs), deeper or
+terminal rollouts, and a tempo-aware leaf. Runtime card metadata (building the pool from the
+engine's own card data rather than our offline CSV, absent in the Kaggle runtime) is also a
+tracked follow-up in `ASSUMPTIONS.md`.
 
 ## 6. What's next
 

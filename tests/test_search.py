@@ -39,8 +39,8 @@ def _obs(me_prize: int, them_prize: int) -> SimpleNamespace:
 
 @pytest.mark.unit
 def test_evaluate_observation_prefers_prize_lead():
-    ahead = search.evaluate_observation(_obs(me_prize=2, them_prize=5))
-    behind = search.evaluate_observation(_obs(me_prize=5, them_prize=2))
+    ahead = search.evaluate_observation(_obs(me_prize=2, them_prize=5), 0)
+    behind = search.evaluate_observation(_obs(me_prize=5, them_prize=2), 0)
     assert ahead > behind
 
 
@@ -58,8 +58,9 @@ def test_evaluate_terminal_win_loss():
             yourIndex=0, result=1, players=[_player(1, 100), _player(1, 100)]
         )
     )
-    assert search.evaluate_observation(win) == cfg.VALUE_WIN
-    assert search.evaluate_observation(loss) == cfg.VALUE_LOSS
+    # Evaluated from player 0's fixed perspective.
+    assert search.evaluate_observation(win, 0) == cfg.VALUE_WIN
+    assert search.evaluate_observation(loss, 0) == cfg.VALUE_LOSS
 
 
 @pytest.mark.unit

@@ -1,38 +1,50 @@
-"""Determinized one-ply lookahead over the engine's search API.
+"""Determinized rollout search (PIMC) over the engine's search API.
 
-At a single-choice decision, we clone the battle for each option
-(``search_begin`` + ``search_step`` — fully isolated from the real game), score
-the resulting observation with a config-weighted positional heuristic, and pick
-the best option. Hidden information is filled in by :mod:`ptcg_bot.belief`.
+At a MAIN decision, for each option we run ``K`` determinized rollouts: clone the
+battle (``search_begin`` — isolated from the real game), take the option, then
+play the branch forward with an attack-first base policy for up to ``depth``
+plies (``search_step``), and score the leaf with a config-weighted positional
+evaluator taken **from our fixed root perspective**. The option's value is the
+mean leaf value across worlds (PIMC); we pick the argmax.
 
-This is the first, deliberately small IS-MCTS step: one ply, one determinized
-world. It reads the engine's ``Observation`` dataclass directly (no card pool
-needed) and is entirely best-effort — any missing ``cg``, bad determinization,
-or engine error makes :func:`choose_by_search` return ``None`` so the caller
-falls back to the heuristic policy. Extending to K worlds and deeper rollouts is
-the next step toward full PIMC.
+Why this can beat the base policy: one step of lookahead + rollout with a base
+policy yields a policy at least as good as the base in expectation (policy
+improvement). Worlds differ via the engine's own (un-seeded) coin/shuffle RNG.
+
+Only MAIN decisions are searched (sub-selections use the fast heuristic), and the
+whole thing is wall-clock bounded (``config.TURN_DEADLINE_S``) and best-effort:
+any missing ``cg``, bad determinization, engine error, or time-out returns the
+best option found so far, or ``None`` to fall back to the heuristic.
 """
 
 from __future__ import annotations
 
 import contextlib
+import time
 from typing import Any
 
 from . import belief
 from . import config as cfg
 
-# Only search genuine single-choice decisions with a handful of options — enough
-# to cover MAIN and most target/card sub-selections while bounding the cost.
 _MAX_OPTIONS = 12
+_SELECT_TYPE_MAIN = 0
+
+# Kept modest so a MAIN decision stays well under the turn deadline.
+_WORLDS = min(6, max(1, cfg.SEARCH_WORLDS))
+_DEPTH = min(5, max(1, cfg.SEARCH_ROLLOUT_DEPTH))
+
+# OptionType ids (engine cg/api.py). Rollout base policy = attack-first.
+_ATTACK = 13
+_END = 14
+_DEVELOP = (10, 8, 9, 7)  # ability, attach, evolve, play
 
 
-def evaluate_observation(observation: Any) -> float:
-    """Positional value of an engine ``Observation`` from our perspective."""
+def evaluate_observation(observation: Any, me: int) -> float:
+    """Positional value of an ``Observation`` from player ``me``'s perspective."""
     current = getattr(observation, "current", None)
     if current is None:
         return 0.0
 
-    me = int(getattr(current, "yourIndex", 0))
     result = getattr(current, "result", -1)
     if result != -1:
         if result == me:
@@ -53,6 +65,7 @@ def evaluate_observation(observation: Any) -> float:
     us_active = (getattr(us, "active", None) or [None])[0]
     them_active = (getattr(them, "active", None) or [None])[0]
     us_bench = getattr(us, "bench", None) or []
+    them_bench = getattr(them, "bench", None) or []
 
     score = (
         len(getattr(them, "prize", []) or []) - len(getattr(us, "prize", []) or [])
@@ -62,6 +75,7 @@ def evaluate_observation(observation: Any) -> float:
     if them_active is not None:
         score -= _hp(them_active) * cfg.W_OPP_ACTIVE_HP
     score += sum(_hp(p) for p in us_bench) * cfg.W_OWN_BENCH_HP
+    score -= sum(_hp(p) for p in them_bench) * cfg.W_OWN_BENCH_HP
     score += ((1 if us_active is not None else 0) + len(us_bench)) * cfg.W_BOARD_POKEMON
     board_energy = (_energy(us_active) if us_active is not None else 0) + sum(
         _energy(p) for p in us_bench
@@ -71,8 +85,48 @@ def evaluate_observation(observation: Any) -> float:
     return score
 
 
+def _rollout_choice(observation: Any) -> list[int]:
+    """Attack-first base policy over an engine ``Observation`` (for rollouts)."""
+    select = getattr(observation, "select", None)
+    if select is None:
+        return []
+    options = getattr(select, "option", None) or []
+    if not options:
+        return []
+    max_count = int(getattr(select, "maxCount", 1) or 1)
+    if max_count == 1:
+        for i, o in enumerate(options):
+            if getattr(o, "type", None) == _ATTACK:
+                return [i]
+        for otype in _DEVELOP:
+            for i, o in enumerate(options):
+                if getattr(o, "type", None) == otype:
+                    return [i]
+        for i, o in enumerate(options):
+            if getattr(o, "type", None) == _END:
+                return [i]
+    return list(range(min(max_count, len(options))))
+
+
+def _rollout(
+    search_step: Any, search_id: int, observation: Any, depth: int, me: int
+) -> float:
+    """Play the branch forward with the base policy, then score the leaf as ``me``."""
+    obs = observation
+    sid = search_id
+    for _ in range(depth):
+        current = getattr(obs, "current", None)
+        if current is not None and getattr(current, "result", -1) != -1:
+            break
+        if getattr(obs, "select", None) is None:
+            break
+        state = search_step(sid, _rollout_choice(obs))
+        obs, sid = state.observation, state.searchId
+    return evaluate_observation(obs, me)
+
+
 def choose_by_search(obs_dict: dict[str, Any]) -> list[int] | None:
-    """Best option index for a single-choice decision, or ``None`` to fall back."""
+    """Best MAIN option by K-world rollout search, or ``None`` to fall back."""
     try:
         from cg.api import (  # type: ignore[import-not-found]
             search_begin,
@@ -88,6 +142,8 @@ def choose_by_search(obs_dict: dict[str, Any]) -> list[int] | None:
         select = obs_dict.get("select")
         if not isinstance(select, dict):
             return None
+        if select.get("type") != _SELECT_TYPE_MAIN:
+            return None  # only search MAIN; sub-selects use the fast heuristic
         options = select.get("option") or []
         if not (2 <= len(options) <= _MAX_OPTIONS):
             return None
@@ -97,21 +153,32 @@ def choose_by_search(obs_dict: dict[str, Any]) -> list[int] | None:
             return None
 
         observation = to_observation_class(obs_dict)
+        current = getattr(observation, "current", None)
+        if current is None:
+            return None
+        me = int(getattr(current, "yourIndex", 0))
         hidden = belief.determinize(observation)
         if hidden is None:
             return None
 
-        best_index: int | None = None
-        best_score = float("-inf")
+        deadline = time.monotonic() + max(0.1, cfg.TURN_DEADLINE_S * 0.8)
+        totals = [0.0] * len(options)
+        visited = [0] * len(options)
         search_ids: list[int] = []
         try:
-            for index in range(len(options)):
-                state = search_begin(observation, *hidden)
-                search_ids.append(state.searchId)
-                nxt = search_step(state.searchId, [index])
-                score = evaluate_observation(nxt.observation)
-                if score > best_score:
-                    best_score, best_index = score, index
+            for _ in range(_WORLDS):
+                if time.monotonic() > deadline:
+                    break
+                for i in range(len(options)):
+                    if time.monotonic() > deadline:
+                        break
+                    state = search_begin(observation, *hidden)
+                    search_ids.append(state.searchId)
+                    stepped = search_step(state.searchId, [i])
+                    totals[i] += _rollout(
+                        search_step, stepped.searchId, stepped.observation, _DEPTH, me
+                    )
+                    visited[i] += 1
         finally:
             for sid in search_ids:
                 with contextlib.suppress(Exception):
@@ -119,6 +186,9 @@ def choose_by_search(obs_dict: dict[str, Any]) -> list[int] | None:
             with contextlib.suppress(Exception):
                 search_end()
 
-        return None if best_index is None else [best_index]
+        scored = [
+            (totals[i] / visited[i], i) for i in range(len(options)) if visited[i]
+        ]
+        return [max(scored)[1]] if scored else None
     except Exception:
         return None

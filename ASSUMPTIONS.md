@@ -83,19 +83,20 @@ simulator / competition page resolves the open items.
     battle with our deck, drives a random legal playthrough, and runs `parse_observation` on
     every real observation. It is engine-gated (needs `make engine`), not part of `make ci`.
 
-15. **One-ply search is built but NOT shipped — it underperforms the heuristic.**
-    `ptcg_bot/search.py` + `ptcg_bot/belief.py` implement determinized one-ply lookahead over
-    the engine's `search_begin/step/end` API (isolated clones; hidden info filled by a crude
-    single-world determinization; the resulting observation scored by a config-weighted
-    positional heuristic). Measured with `make tournament --opponent heuristic` (sides
-    alternated): the search agent wins only ~10% vs the attack-first heuristic and ~75% vs
-    random (both WORSE than the heuristic's ~75-100% vs random; note the engine RNG is
-    un-seeded, so win-rates vary run-to-run). Diagnosis: the positional
-    evaluator rewards board/energy/hand, so one-ply search drifts back toward over-developing
-    (the very failure attack-first fixed), and single-world determinization adds noise.
-    **Therefore `agent` (shipped) stays the heuristic; `search_agent` is retained as
-    experimental.** The path to a real gain is full PIMC — K determinized worlds, deeper
-    rollouts, and an attack/tempo-aware leaf evaluator — which the tournament harness will score.
+15. **Determinized rollout search (PIMC) is built but NOT shipped — now roughly on par,
+    not a clear win.** `ptcg_bot/search.py` + `ptcg_bot/belief.py` implement a K-world rollout
+    search over the engine's `search_begin/step/end` API: for each MAIN option, run `K`
+    determinized rollouts with an attack-first base policy to depth `D`, score the leaf **from
+    the fixed root perspective**, and pick the mean-value argmax (PIMC). Measured evolution vs
+    the attack-first heuristic (`make tournament --opponent heuristic`, sides alternated):
+    - naïve one-ply, single world, leaf-`yourIndex` eval → **~10%** (much worse);
+    - fixing the perspective bug (evaluate as the root player, not the leaf's mover),
+      MAIN-only gating, and K-world depth-D rollouts → **~40–47%** (roughly on par).
+    So the multi-world upgrade closed most of the gap but did not clearly surpass the
+    heuristic, and it is slower — **therefore `agent` (shipped) stays the heuristic and
+    `search_agent` remains experimental.** Engine RNG is un-seeded, so all figures are
+    run-to-run ranges. The remaining levers to actually win: a realistic per-world deck-prior
+    determinization (not filler IDs), deeper/terminal rollouts, and a tempo-aware leaf.
 
 16. **`main.agent` is a v1 heuristic option policy.** `agent(obs_dict) -> list[int]` is
     pure-stdlib and reads the raw observation dict (no `cg` import), so it drops into the
