@@ -175,14 +175,17 @@ The IS-MCTS layer **is implemented** (`ptcg_bot/search.py` + `belief.py`): a K-w
 determinized **rollout PIMC** over the engine's `search_begin/step/end` hooks — for each MAIN
 option, run K rollouts with an attack-first base policy to depth D and average the leaf value
 from our fixed root perspective. A/B-tested against the shipped heuristic (mirror, sides
-alternated), it climbed from **~10%** (a naïve one-ply version with a perspective bug and a
-single world) to **~40–47%** once the leaf was scored from the correct player and rollouts
-spanned K worlds — i.e. **roughly on par with the heuristic, but not a clear win**, and
-slower. So the heuristic remains the shipped agent. The honest next levers are a realistic
-per-world deck-prior determinization (the current one fills with valid filler IDs), deeper or
-terminal rollouts, and a tempo-aware leaf. Runtime card metadata (building the pool from the
-engine's own card data rather than our offline CSV, absent in the Kaggle runtime) is also a
-tracked follow-up in `ASSUMPTIONS.md`.
+alternated), it climbed in three measured steps: **~10%** (a naïve one-ply version with a
+perspective bug and a single world) → **~40–47%** after fixing the leaf perspective and adding
+K-world rollouts → **~52%** (31W/29L over 60 games) after **realistic determinization** — our
+unseen cards drawn from our actual decklist minus what the observation shows, and the
+opponent's from a varied legal sample, one world at a time. That is **parity with the
+heuristic, within noise — a real climb from behind to level, but not yet a decisive win**, and
+it is slower. So the heuristic remains the shipped agent. The honest next levers are
+deeper/terminal rollouts and more worlds (both capped for speed today), a learned opponent
+deck prior, and a tempo-aware leaf. Runtime card metadata (building the pool from the engine's
+own card data rather than our offline CSV, absent in the Kaggle runtime) is also a tracked
+follow-up in `ASSUMPTIONS.md`.
 
 ## 6. What's next
 

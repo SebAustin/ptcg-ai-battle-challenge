@@ -11,9 +11,10 @@ plus the accompanying **Strategy** writeup. Two linked submissions:
 > **explainable heuristic evaluator**, the **engine adapter**, and a first **playable agent**
 > (`main.agent`) are in place and tested behind an enforced quality/CI + security gate.
 > `make verify` runs the **live engine**; the agent plays full legal games against it. A K-world
-> rollout **PIMC** `search`/`belief` layer is built and A/B-tested — now roughly on par with the
-> shipped heuristic (~40–47% in mirror A/B) but not a clear win, so the heuristic still ships.
-> Realistic determinization + deeper rollouts are the next lever (see ASSUMPTIONS.md).
+> rollout **PIMC** `search`/`belief` layer is built and A/B-tested — with realistic per-world
+> determinization it reached **parity** with the shipped heuristic (~52% in mirror A/B, within
+> noise) but not a *decisive* win, so the heuristic still ships. Deeper/terminal rollouts + a
+> learned opponent prior are the next lever (see ASSUMPTIONS.md).
 >
 > **Engine:** the simulator (`pokemon-tcg-ai-battle`: `sample_submission/cg/` + native `libcg`)
 > is fetched locally into the gitignored `engine/` via `make engine` (after accepting that
@@ -69,8 +70,8 @@ ptcg_bot/        the submitted agent (pure stdlib once bundled)
   evaluate.py    explainable state-value heuristic  [done, tested]
   engine_adapter.py  obs dict -> GameState + action encoding  [wired, tested vs live engine]
   main.py        agent entrypoint — attack-first heuristic (shipped; consistently beats random)  [done]
-  search.py/belief.py  K-world rollout PIMC search  [built; ~on par w/ heuristic, not shipped — see ASSUMPTIONS.md]
-  legal  [next — typed option semantics; realistic determinization + deeper rollouts]
+  search.py/belief.py  K-world rollout PIMC + realistic determinization  [built; parity w/ heuristic, not shipped]
+  legal  [next — typed option semantics; deeper/terminal rollouts + opponent prior]
 deckbuilder/     offline deck construction & optimization (the 20% deliverable)
 tools/           eval harness: verify_env/tournament/soak/tune/bundle/run_match
 tests/           pytest  [test_cards.py passing]

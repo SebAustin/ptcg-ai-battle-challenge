@@ -72,7 +72,9 @@ audit: ## Enforce SECURITY.md — no network/subprocess imports in the agent
 	else echo "[audit] ok — no socket/urllib/requests/subprocess imports in ptcg_bot/"; fi
 
 security: ## Static (bandit) + dependency-CVE (pip-audit) scan; pip-audit needs network
-	$(BANDIT) -q -r ptcg_bot deckbuilder
+	# Skip B311: `random` is used for game-world determinization (search/belief),
+	# never for security or crypto — a pseudo-RNG is exactly right there.
+	$(BANDIT) -q -r ptcg_bot deckbuilder --skip B311
 	$(PIPAUDIT) -r requirements.txt
 
 ci: lint typecheck audit security test ## Engine-free gate CI runs (lint + types + audit + security + tests)

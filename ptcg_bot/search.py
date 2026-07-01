@@ -20,6 +20,7 @@ best option found so far, or ``None`` to fall back to the heuristic.
 from __future__ import annotations
 
 import contextlib
+import random
 import time
 from typing import Any
 
@@ -157,17 +158,20 @@ def choose_by_search(obs_dict: dict[str, Any]) -> list[int] | None:
         if current is None:
             return None
         me = int(getattr(current, "yourIndex", 0))
-        hidden = belief.determinize(observation)
-        if hidden is None:
-            return None
+        my_deck = list(belief.my_deck_ids()) or None
 
         deadline = time.monotonic() + max(0.1, cfg.TURN_DEADLINE_S * 0.8)
         totals = [0.0] * len(options)
         visited = [0] * len(options)
         search_ids: list[int] = []
         try:
-            for _ in range(_WORLDS):
+            for world in range(_WORLDS):
                 if time.monotonic() > deadline:
+                    break
+                # One determinization per world (seeded → diverse but reproducible);
+                # all options are compared under the same world.
+                hidden = belief.determinize(observation, my_deck, random.Random(world))
+                if hidden is None:
                     break
                 for i in range(len(options)):
                     if time.monotonic() > deadline:

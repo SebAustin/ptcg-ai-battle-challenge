@@ -90,13 +90,18 @@ simulator / competition page resolves the open items.
     the fixed root perspective**, and pick the mean-value argmax (PIMC). Measured evolution vs
     the attack-first heuristic (`make tournament --opponent heuristic`, sides alternated):
     - naïve one-ply, single world, leaf-`yourIndex` eval → **~10%** (much worse);
-    - fixing the perspective bug (evaluate as the root player, not the leaf's mover),
-      MAIN-only gating, and K-world depth-D rollouts → **~40–47%** (roughly on par).
-    So the multi-world upgrade closed most of the gap but did not clearly surpass the
-    heuristic, and it is slower — **therefore `agent` (shipped) stays the heuristic and
-    `search_agent` remains experimental.** Engine RNG is un-seeded, so all figures are
-    run-to-run ranges. The remaining levers to actually win: a realistic per-world deck-prior
-    determinization (not filler IDs), deeper/terminal rollouts, and a tempo-aware leaf.
+    - + perspective-bug fix (evaluate as the root player), MAIN-only gating, K-world depth-D
+      rollouts → **~40–47%** (behind, closing);
+    - + **realistic per-world determinization** (`belief.py`: our unseen cards = *decklist
+      minus what's visible in the observation*, shuffled per world; opponent hidden cards a
+      *varied legal sample*; one determinization per world for genuine PIMC diversity) →
+      **~52%** (31W/29L over 60 games — **parity, within noise of 50%**).
+    So realistic determinization moved search from behind to level with the heuristic, but
+    it is still not a *decisive* win and it is slower — **therefore `agent` (shipped) stays the
+    heuristic and `search_agent` remains experimental.** Engine RNG is un-seeded, so all
+    figures are run-to-run ranges. The remaining levers to break past parity: deeper/terminal
+    rollouts and more worlds (both currently capped for speed — `_WORLDS`/`_DEPTH` in
+    `search.py`), a learned opponent deck prior, and a tempo-aware leaf evaluator.
 
 16. **`main.agent` is a v1 heuristic option policy.** `agent(obs_dict) -> list[int]` is
     pure-stdlib and reads the raw observation dict (no `cg` import), so it drops into the

@@ -73,6 +73,42 @@ def test_choose_by_search_returns_none_without_engine():
 
 
 @pytest.mark.unit
+def test_determinize_shapes_and_our_side(monkeypatch):
+    import random
+
+    from ptcg_bot import metadata
+
+    monkeypatch.setattr(metadata, "valid_card_ids", lambda: tuple(range(1, 11)))
+    monkeypatch.setattr(metadata, "basic_pokemon_ids", lambda: (7,))
+
+    def card(i: int) -> SimpleNamespace:
+        return SimpleNamespace(id=i)
+
+    us = SimpleNamespace(
+        deckCount=3,
+        prize=[None, None],
+        handCount=2,
+        hand=[card(1), card(2)],
+        active=[SimpleNamespace(id=3, energyCards=[], preEvolution=[])],
+        bench=[],
+        discard=[],
+    )
+    them = SimpleNamespace(
+        deckCount=4, prize=[None, None], handCount=3, active=[card(9)], bench=[]
+    )
+    obs = SimpleNamespace(current=SimpleNamespace(yourIndex=0, players=[us, them]))
+
+    your_deck, your_prize, opp_deck, opp_prize, opp_hand, opp_active = (
+        belief.determinize(obs, list(range(1, 11)), random.Random(0))
+    )
+    assert (len(your_deck), len(your_prize)) == (3, 2)
+    assert (len(opp_deck), len(opp_prize), len(opp_hand)) == (4, 2, 3)
+    # Our unseen cards come from the decklist minus what's visible (1, 2, 3).
+    assert set(your_deck + your_prize) <= set(range(4, 11))
+    assert opp_active == []  # opponent Active is face-up (id 9), so not determinized
+
+
+@pytest.mark.unit
 def test_belief_determinize_none_without_metadata(monkeypatch):
     # Force the no-metadata path (isolation-safe: a prior integration test may
     # have put the engine on sys.path, making cg importable session-wide).
