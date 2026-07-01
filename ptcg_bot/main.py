@@ -125,9 +125,10 @@ def agent(obs_dict: dict[str, Any]) -> list[int]:
     """Engine entrypoint — the SHIPPED policy: attack-first heuristic (100% vs
     random). Never raises: a bad/raised selection would forfeit the game.
 
-    A one-ply determinized search (:func:`search_agent`) exists but currently
-    UNDERPERFORMS this heuristic (measured by ``tools/tournament --opponent
-    heuristic``), so the heuristic stays the default. See ASSUMPTIONS.md.
+    A determinized rollout-PIMC search (:func:`search_agent`) exists and reaches
+    ~parity with this heuristic (measured by ``tools/tournament --opponent
+    heuristic``) but not a decisive win, so the heuristic stays the default. See
+    ASSUMPTIONS.md.
     """
     try:
         if engine_adapter.is_deck_request(obs_dict):
