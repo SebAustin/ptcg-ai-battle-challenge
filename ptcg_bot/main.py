@@ -23,7 +23,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from . import engine_adapter, metadata
+from . import engine_adapter, metadata, search
 
 # OptionType ids from the engine's cg/api.py.
 _ABILITY = 10
@@ -99,21 +99,16 @@ def _default_selection(select: dict[str, Any]) -> list[int]:
     return list(range(min(max_count, option_count)))
 
 
-def choose(obs: dict[str, Any]) -> list[int]:
-    """Decide the selection for one observation (raises are caught by :func:`agent`)."""
-    if engine_adapter.is_deck_request(obs):
-        return _read_deck()
-
+def _heuristic_selection(obs: dict[str, Any]) -> list[int]:
+    """Search-free policy for one (non-deck-request) selection."""
     select = obs.get("select") or {}
     options = select.get("option") or []
     if not options:
         return []
-
     if int(select.get("maxCount") or 0) == 1:
         picked = _choose_main(options)
         if picked is not None:
             return picked
-
     return _default_selection(select)
 
 
@@ -127,9 +122,30 @@ def _fallback(obs_dict: dict[str, Any]) -> list[int]:
 
 
 def agent(obs_dict: dict[str, Any]) -> list[int]:
-    """Engine entrypoint. Never raises: a bad decision forfeits, so we always
-    fall back to a legal selection (and, in the worst case, to an empty one)."""
+    """Engine entrypoint — the SHIPPED policy: attack-first heuristic (100% vs
+    random). Never raises: a bad/raised selection would forfeit the game.
+
+    A one-ply determinized search (:func:`search_agent`) exists but currently
+    UNDERPERFORMS this heuristic (measured by ``tools/tournament --opponent
+    heuristic``), so the heuristic stays the default. See ASSUMPTIONS.md.
+    """
     try:
-        return choose(obs_dict)
+        if engine_adapter.is_deck_request(obs_dict):
+            return _read_deck()
+        return _heuristic_selection(obs_dict)
+    except Exception:
+        return _fallback(obs_dict)
+
+
+def search_agent(obs_dict: dict[str, Any]) -> list[int]:
+    """EXPERIMENTAL entrypoint: one-ply determinized lookahead (:mod:`ptcg_bot.search`)
+    with a heuristic fallback. Not yet stronger than :func:`agent` — retained for
+    the in-progress IS-MCTS work and A/B'd by ``tools/tournament``.
+    """
+    try:
+        if engine_adapter.is_deck_request(obs_dict):
+            return _read_deck()
+        searched = search.choose_by_search(obs_dict)
+        return searched if searched is not None else _heuristic_selection(obs_dict)
     except Exception:
         return _fallback(obs_dict)

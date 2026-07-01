@@ -34,6 +34,8 @@ _CG_SRC = _ROOT / "engine" / "sample_submission" / "sample_submission" / "cg"
 _RUNTIME_MODULES = (
     "__init__.py",
     "main.py",
+    "search.py",
+    "belief.py",
     "metadata.py",
     "engine_adapter.py",
     "state.py",

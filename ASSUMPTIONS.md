@@ -83,7 +83,20 @@ simulator / competition page resolves the open items.
     battle with our deck, drives a random legal playthrough, and runs `parse_observation` on
     every real observation. It is engine-gated (needs `make engine`), not part of `make ci`.
 
-15. **`main.agent` is a v1 heuristic option policy.** `agent(obs_dict) -> list[int]` is
+15. **One-ply search is built but NOT shipped — it underperforms the heuristic.**
+    `ptcg_bot/search.py` + `ptcg_bot/belief.py` implement determinized one-ply lookahead over
+    the engine's `search_begin/step/end` API (isolated clones; hidden info filled by a crude
+    single-world determinization; the resulting observation scored by a config-weighted
+    positional heuristic). Measured with `make tournament --opponent heuristic` (sides
+    alternated): the search agent wins only ~10% vs the attack-first heuristic and ~75% vs
+    random (both WORSE than the heuristic's 100% vs random). Diagnosis: the positional
+    evaluator rewards board/energy/hand, so one-ply search drifts back toward over-developing
+    (the very failure attack-first fixed), and single-world determinization adds noise.
+    **Therefore `agent` (shipped) stays the heuristic; `search_agent` is retained as
+    experimental.** The path to a real gain is full PIMC — K determinized worlds, deeper
+    rollouts, and an attack/tempo-aware leaf evaluator — which the tournament harness will score.
+
+16. **`main.agent` is a v1 heuristic option policy.** `agent(obs_dict) -> list[int]` is
     pure-stdlib and reads the raw observation dict (no `cg` import), so it drops into the
     submission bundle unchanged. Policy: deck request -> 60 IDs from `deck.csv`; MAIN phase ->
     develop-then-attack greedy over OptionType (ABILITY>PLAY>ATTACH>EVOLVE>ATTACK>END, never

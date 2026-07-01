@@ -82,36 +82,55 @@ def play_game(
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="PTCG self-play tournament")
     parser.add_argument("--games", type=int, default=20, help="number of games")
+    parser.add_argument(
+        "--opponent",
+        choices=["random", "heuristic"],
+        default="random",
+        help="baseline: random selector, or the search-free heuristic agent",
+    )
     args = parser.parse_args(argv)
 
     game = _import_game()
     from deckbuilder import build_deck
     from ptcg_bot.cards import load_pool
-    from ptcg_bot.main import agent
+    from ptcg_bot.main import agent, search_agent
 
     deck = [cid for cid, n in build_deck(load_pool()).counts for _ in range(n)]
 
-    wins = losses = draws = unfinished = 0
-    for i in range(args.games):
-        result = play_game(
-            game, deck, list(deck), agent, random_policy(random.Random(i))
-        )
-        if result == 0:
-            wins += 1
-        elif result == 1:
-            losses += 1
-        elif result == 2:
-            draws += 1
-        else:
-            unfinished += 1
+    wins = losses = draws = 0
+    if args.opponent == "random":
+        # The SHIPPED agent (attack-first heuristic) vs random; random gives
+        # per-game variance, agent is always P0.
+        for i in range(args.games):
+            result = play_game(
+                game, deck, list(deck), agent, random_policy(random.Random(i))
+            )
+            wins += result == 0
+            losses += result == 1
+            draws += result == 2
+        subject, label = "shipped agent", "random"
+    else:
+        # A/B the EXPERIMENTAL search_agent vs the shipped heuristic; alternate
+        # sides to cancel first-player advantage and count the search agent.
+        for i in range(args.games):
+            if i % 2 == 0:
+                result = play_game(game, deck, list(deck), search_agent, agent)
+                outcome = result  # search is P0
+            else:
+                result = play_game(game, deck, list(deck), agent, search_agent)
+                outcome = 1 - result if result in (0, 1) else result  # search is P1
+            wins += outcome == 0
+            losses += outcome == 1
+            draws += outcome == 2
+        subject, label = "search_agent", "heuristic (search-free)"
 
     decided = wins + losses
     win_rate = (wins / decided * 100.0) if decided else 0.0
     print(
-        f"[tournament] {args.games} games — agent(P0) vs random(P1): "
-        f"{wins}W / {losses}L / {draws}D / {unfinished}U"
+        f"[tournament] {args.games} games — {subject} vs {label}: "
+        f"{wins}W / {losses}L / {draws}D"
     )
-    print(f"[tournament] win-rate vs random (decided games): {win_rate:.1f}%")
+    print(f"[tournament] win-rate vs {label} (decided games): {win_rate:.1f}%")
 
 
 if __name__ == "__main__":

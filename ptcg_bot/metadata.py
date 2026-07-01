@@ -34,3 +34,28 @@ def attack_damage() -> dict[int, int]:
     except Exception:
         return {}
     return table
+
+
+@cache
+def _all_cards() -> tuple:
+    """The engine's full CardData list, or an empty tuple if cg is unavailable."""
+    try:
+        from cg.api import all_card_data
+    except Exception:
+        return ()
+    try:
+        return tuple(all_card_data())
+    except Exception:
+        return ()
+
+
+@cache
+def basic_pokemon_ids() -> tuple[int, ...]:
+    """Card IDs of Basic Pokémon (needed to seed a legal opponent deck for search)."""
+    return tuple(int(c.cardId) for c in _all_cards() if getattr(c, "basic", False))
+
+
+@cache
+def valid_card_ids() -> tuple[int, ...]:
+    """All valid card IDs (used to fill determinized hidden-info arrays)."""
+    return tuple(int(c.cardId) for c in _all_cards())
