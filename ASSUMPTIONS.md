@@ -101,8 +101,8 @@ simulator / competition page resolves the open items.
 16. **`main.agent` is a v1 heuristic option policy.** `agent(obs_dict) -> list[int]` is
     pure-stdlib and reads the raw observation dict (no `cg` import), so it drops into the
     submission bundle unchanged. Policy: deck request -> 60 IDs from `deck.csv`; MAIN phase ->
-    develop-then-attack greedy over OptionType (ABILITY>PLAY>ATTACH>EVOLVE>ATTACK>END, never
-    voluntarily RETREAT); other selections -> take the allowed options; a catch-all guarantees a
+    ATTACK-FIRST over OptionType (attack when able, else develop ABILITY>ATTACH>EVOLVE>PLAY,
+    else END; never voluntarily RETREAT); other selections -> take the allowed options; a catch-all guarantees a
     legal (never raised) selection. It needs **no card metadata**, so it runs without the CSV.
     Verified: it plays full legal games against the live engine to a decided result. Deferred:
     scoring options with `evaluate.state_value` + the engine's search hooks (`legal`/`belief`/
