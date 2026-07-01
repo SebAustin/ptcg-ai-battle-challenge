@@ -82,5 +82,13 @@ simulator / competition page resolves the open items.
 14. **`make verify` is the live gate (§W2-3).** `tools/verify_env.py` loads `libcg`, starts a
     battle with our deck, drives a random legal playthrough, and runs `parse_observation` on
     every real observation. It is engine-gated (needs `make engine`), not part of `make ci`.
-    Still to build on the now-local engine: `legal` (option semantics), `belief`, `search`, and
-    the `main` entrypoint.
+
+15. **`main.agent` is a v1 heuristic option policy.** `agent(obs_dict) -> list[int]` is
+    pure-stdlib and reads the raw observation dict (no `cg` import), so it drops into the
+    submission bundle unchanged. Policy: deck request -> 60 IDs from `deck.csv`; MAIN phase ->
+    develop-then-attack greedy over OptionType (ABILITY>PLAY>ATTACH>EVOLVE>ATTACK>END, never
+    voluntarily RETREAT); other selections -> take the allowed options; a catch-all guarantees a
+    legal (never raised) selection. It needs **no card metadata**, so it runs without the CSV.
+    Verified: it plays full legal games against the live engine to a decided result. Deferred:
+    scoring options with `evaluate.state_value` + the engine's search hooks (`legal`/`belief`/
+    `search`), which need a runtime pool built from the engine's `all_card_data`.

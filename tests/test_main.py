@@ -1,0 +1,119 @@
+"""Tests for the agent entrypoint (ptcg_bot.main).
+
+Unit tests use synthetic observation dicts (no engine/data). One integration
+test drives a full battle with OUR agent on both sides against the live engine,
+proving every selection it returns is legal; it skips without engine/ + data/.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pytest
+
+from ptcg_bot.main import agent
+
+_ENGINE = (
+    Path(__file__).resolve().parent.parent
+    / "engine"
+    / "sample_submission"
+    / "sample_submission"
+)
+
+
+# --- deck request -----------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_deck_request_returns_60_ids(tmp_path, monkeypatch):
+    (tmp_path / "deck.csv").write_text("\n".join(str(i) for i in range(60)) + "\n")
+    monkeypatch.chdir(tmp_path)
+    result = agent({"select": None, "current": None})
+    assert result == list(range(60))
+
+
+# --- MAIN-phase priority ----------------------------------------------------
+
+
+@pytest.mark.unit
+def test_main_prefers_develop_then_attack_over_end():
+    # options: END(14), ATTACK(13), ATTACH(8). ATTACH outranks ATTACK and END.
+    obs = {
+        "select": {"maxCount": 1, "option": [{"type": 14}, {"type": 13}, {"type": 8}]}
+    }
+    assert agent(obs) == [2]  # the ATTACH option
+
+
+@pytest.mark.unit
+def test_main_attacks_when_only_attack_or_end():
+    obs = {"select": {"maxCount": 1, "option": [{"type": 14}, {"type": 13}]}}
+    assert agent(obs) == [1]  # ATTACK preferred over END
+
+
+@pytest.mark.unit
+def test_main_ends_when_nothing_else():
+    obs = {"select": {"maxCount": 1, "option": [{"type": 14}]}}
+    assert agent(obs) == [0]  # END
+
+
+# --- generic selection default ----------------------------------------------
+
+
+@pytest.mark.unit
+def test_generic_select_takes_maxcount_options():
+    # A non-MAIN multi-select (option type CARD=3): take the first maxCount.
+    obs = {"select": {"maxCount": 2, "option": [{"type": 3}] * 4}}
+    assert agent(obs) == [0, 1]
+
+
+@pytest.mark.unit
+def test_empty_options_returns_empty():
+    assert agent({"select": {"maxCount": 1, "option": []}}) == []
+
+
+@pytest.mark.unit
+def test_agent_never_raises_on_malformed_input():
+    # Malformed maxCount must not raise — the agent falls back to a legal (empty) pick.
+    result = agent({"select": {"maxCount": "oops", "option": [{}, {}]}})
+    assert isinstance(result, list)
+
+
+# --- live full game (skips without engine/ + data/) -------------------------
+
+
+@pytest.mark.integration
+def test_agent_plays_a_full_legal_game():
+    if not (_ENGINE / "cg" / "api.py").exists():
+        pytest.skip("engine not present (run `make engine`)")
+
+    from ptcg_bot.cards import DEFAULT_CSV, load_pool
+
+    if not DEFAULT_CSV.exists():
+        pytest.skip("competition dataset not present (run `make data`)")
+    sys.path.insert(0, str(_ENGINE))
+    from cg import game  # type: ignore[import-not-found]
+
+    from deckbuilder import build_deck
+
+    deck_ids = [cid for cid, n in build_deck(load_pool()).counts for _ in range(n)]
+    obs, start = game.battle_start(deck_ids, list(deck_ids))
+    assert obs is not None, f"engine rejected our deck (errorType={start.errorType})"
+    try:
+        steps = 0
+        result = -1
+        while steps < 3000:
+            if obs.get("select") is None:
+                break
+            obs = game.battle_select(agent(obs))  # engine raises if selection illegal
+            steps += 1
+            result = (obs.get("current") or {}).get("result", -1)
+            if result != -1:
+                break
+        assert result in (
+            0,
+            1,
+            2,
+        ), f"game did not resolve (result={result}, steps={steps})"
+    finally:
+        game.battle_finish()

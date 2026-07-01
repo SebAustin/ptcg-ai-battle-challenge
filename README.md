@@ -8,10 +8,10 @@ plus the accompanying **Strategy** writeup. Two linked submissions:
   **20%** deck construction, **10%** report.
 
 > Status: card data layer, rule spine, **deckbuilder**, internal **GameState**, the
-> **explainable heuristic evaluator**, and the **engine adapter** are in place and tested
-> behind an enforced quality/CI + security gate. `make verify` runs the **live engine** and
-> confirms it accepts our deck and that `parse_observation` handles real observations. The
-> gameplay modules (`legal`/`belief`/`search`) and the agent entrypoint (`main`) are next.
+> **explainable heuristic evaluator**, the **engine adapter**, and a first **playable agent**
+> (`main.agent`) are in place and tested behind an enforced quality/CI + security gate.
+> `make verify` runs the **live engine**; the agent plays full legal games against it. The
+> lookahead layer (`legal`/`belief`/`search`) that upgrades the v1 option policy is next.
 >
 > **Engine:** the simulator (`pokemon-tcg-ai-battle`: `sample_submission/cg/` + native `libcg`)
 > is fetched locally into the gitignored `engine/` via `make engine` (after accepting that
@@ -66,7 +66,8 @@ ptcg_bot/        the submitted agent (pure stdlib once bundled)
   state.py       internal GameState model  [done, tested]
   evaluate.py    explainable state-value heuristic  [done, tested]
   engine_adapter.py  obs dict -> GameState + action encoding  [wired, tested vs live engine]
-  legal/belief/search/main  [next — build on the now-local engine]
+  main.py        agent entrypoint — v1 heuristic option policy  [done; plays full legal games]
+  legal/belief/search  [next — the lookahead layer that upgrades main's policy]
 deckbuilder/     offline deck construction & optimization (the 20% deliverable)
 tools/           eval harness: verify_env/tournament/soak/tune/bundle/run_match
 tests/           pytest  [test_cards.py passing]
