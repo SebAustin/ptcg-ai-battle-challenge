@@ -1,9 +1,11 @@
 """Generate the writeup figures — our own charts only (no card art).
 
-Produces PNGs in ``writeup/figures/``:
+Produces PNGs in ``writeup/figures/`` (each a deterministic 1008x588, clearing
+Kaggle's 640x360 Media Gallery minimum) plus ``writeup/CAPTIONS.md``:
   1. deck composition (Pokémon / Trainer / Energy counts)
   2. the deckbuilder's heuristic deck-quality breakdown
   3. agent win-rate vs a random baseline (develop-first vs attack-first)
+  4. search-vs-heuristic progress across the build passes
 
 Dev-only; needs the competition data (``make data``). Run: ``make figures``.
 """
@@ -19,6 +21,35 @@ matplotlib.use("Agg")  # headless: write files, never open a window
 import matplotlib.pyplot as plt  # noqa: E402  (must follow use())
 
 _OUT = Path(__file__).resolve().parent / "figures"
+
+# Kaggle's Media Gallery requires >= 640x360 px. We fix the canvas size and DPI
+# and do NOT crop with bbox_inches="tight" (that trimmed output to 635 wide, just
+# under the minimum), so every PNG is a deterministic 1008x588.
+_FIG_W, _FIG_H, _DPI = 7.2, 4.2, 140
+
+# One caption per figure for the Kaggle Media Gallery (written to CAPTIONS.md).
+_CAPTIONS = {
+    "deck_composition.png": (
+        "Deck composition — the built 60-card deck: a focused attacker line, "
+        "single-prize support Basics, ~12 Basic Energy, and a role-balanced "
+        "Trainer package."
+    ),
+    "deck_score.png": (
+        "Offline deck-quality heuristic (0-100) — the transparent proxy used "
+        "during construction: consistency, energy balance, opening reliability, "
+        "attacker power, and prize safety."
+    ),
+    "winrate.png": (
+        "Why the policy fix mattered: switching the agent from develop-first to "
+        "attack-first lifted its win-rate vs a random baseline from ~21% to ~100% "
+        "(representative run; engine RNG un-seeded)."
+    ),
+    "search_progress.png": (
+        "Honest search progress: determinized rollout-PIMC climbed from ~10% to "
+        "~52% vs the heuristic (perspective-bug fix + K worlds + realistic "
+        "determinization) — parity, not a decisive win, so the heuristic still ships."
+    ),
+}
 
 # Representative single-run win-rates vs the random baseline (tools/tournament).
 # The engine RNG is un-seeded, so runs vary — attack-first ~75-100%, develop-first
@@ -38,7 +69,9 @@ _SEARCH_PROGRESS = (
 def _save(fig: plt.Figure, name: str) -> Path:
     _OUT.mkdir(parents=True, exist_ok=True)
     path = _OUT / name
-    fig.savefig(path, dpi=140, bbox_inches="tight")
+    fig.set_size_inches(_FIG_W, _FIG_H)  # enforce a min-resolution canvas
+    fig.tight_layout()  # arrange within the canvas (does NOT crop it)
+    fig.savefig(path, dpi=_DPI)  # deterministic 1008x588 px, no tight-bbox crop
     plt.close(fig)
     return path
 
@@ -119,8 +152,17 @@ def main() -> None:
         winrate_figure(),
         search_progress_figure(),
     ]
+
+    captions_md = ["# Media Gallery captions\n"]
     for path in paths:
+        caption = _CAPTIONS.get(path.name, "")
         print(f"wrote {path}")
+        print(f"  caption: {caption}\n")
+        captions_md.append(f"**{path.name}**\n\n{caption}\n")
+    (_OUT.parent / "CAPTIONS.md").write_text("\n".join(captions_md), encoding="utf-8")
+    print(
+        f"wrote {_OUT.parent / 'CAPTIONS.md'} (copy captions into the Kaggle gallery)"
+    )
 
 
 if __name__ == "__main__":
