@@ -34,3 +34,4 @@ engine/
 # Local agent/session state
 .remember/
 .claude/
+.cursor/

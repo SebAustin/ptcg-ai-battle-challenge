@@ -17,6 +17,10 @@ MYPY := $(VENV)/bin/mypy
 BANDIT := $(VENV)/bin/bandit
 PIPAUDIT := $(VENV)/bin/pip-audit
 
+# Our Python lives here — scope the tools to these so stray local tooling
+# (.cursor/, editor scratch, the gitignored engine/) is never linted/formatted.
+SRC := ptcg_bot deckbuilder tools tests
+
 .DEFAULT_GOAL := help
 .PHONY: help setup data engine test lint format typecheck audit security ci deck verify tournament soak bundle tune check submit freeze clean
 
@@ -50,14 +54,14 @@ test: ## Run the test suite (integration tests skip without local data/)
 
 # --- Quality gate (dev-only; none of this ships in dist/main.py) --------------
 format: ## Auto-fix lint, sort imports, format (ruff --fix + isort + black)
-	$(RUFF) check --fix .
-	$(ISORT) .
-	$(BLACK) .
+	$(RUFF) check --fix $(SRC)
+	$(ISORT) $(SRC)
+	$(BLACK) $(SRC)
 
 lint: ## Check lint + import order + formatting, no writes (CI-safe)
-	$(RUFF) check .
-	$(ISORT) --check-only .
-	$(BLACK) --check .
+	$(RUFF) check $(SRC)
+	$(ISORT) --check-only $(SRC)
+	$(BLACK) --check $(SRC)
 
 typecheck: ## Static type-check the agent + deckbuilder packages (mypy)
 	$(MYPY) ptcg_bot deckbuilder
@@ -77,8 +81,8 @@ deck: ## Build the submission deck.csv into dist/ (offline deckbuilder)
 	$(PY) -m tools.build_deck
 
 # --- Harness targets (tools land per the plan; guarded until they exist) -----
-verify: ## Cross-check sim math + rule variant against the LIVE engine (plan §W2-3)
-	@test -f tools/verify_env.py && $(PY) tools/verify_env.py || echo "[pending] tools/verify_env.py — wired once the simulator is local (plan §W2)"
+verify: ## Validate our model against the LIVE engine (needs `make engine`; plan §W2-3)
+	$(PY) -m tools.verify_env
 
 tournament: ## Win-rate matrix vs baselines + deck-vs-deck (plan §W4)
 	@test -f tools/tournament.py && $(PY) tools/tournament.py $(ARGS) || echo "[pending] tools/tournament.py — plan §W4"

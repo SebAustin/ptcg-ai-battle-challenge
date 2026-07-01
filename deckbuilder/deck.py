@@ -7,16 +7,10 @@ objects is done lazily against a :class:`~ptcg_bot.cards.CardPool`.
 
 from __future__ import annotations
 
-import csv
-import io
 from collections.abc import Iterator
 from dataclasses import dataclass
 
 from ptcg_bot.cards import Card, CardPool
-
-# The submission's deck.csv columns. SUBMIT.md says to confirm the exact schema
-# on the competition page; this is the one place it is defined (see ASSUMPTIONS).
-_CSV_HEADER = "Card ID,Card Name,Count"
 
 
 @dataclass(frozen=True)
@@ -45,21 +39,23 @@ class Deck:
             if card is not None:
                 yield card, n
 
-    def to_csv(self, pool: CardPool) -> str:
-        """Serialize to the submission deck.csv (``Card ID,Card Name,Count``)."""
-        lines = [_CSV_HEADER]
-        for card, n in self.cards(pool):
-            name = card.name
-            if "," in name or '"' in name:
-                name = '"' + name.replace('"', '""') + '"'
-            lines.append(f"{card.card_id},{name},{n}")
+    def to_csv(self) -> str:
+        """Serialize to the engine's deck.csv: one card ID per line, 60 lines.
+
+        The engine reads exactly 60 integer lines with copies repeated and no
+        header (see engine sample_submission/deck.csv and its main.py, which does
+        ``int(csv[i])`` for ``i`` in ``range(60)``).
+        """
+        lines = [str(cid) for cid, n in self.counts for _ in range(n)]
         return "\n".join(lines) + "\n"
 
     @classmethod
     def from_csv(cls, text: str) -> Deck:
-        """Parse a deck.csv back into a :class:`Deck` (inverse of :meth:`to_csv`)."""
+        """Parse the engine deck.csv (one card ID per line) into a :class:`Deck`."""
         counts: dict[int, int] = {}
-        for row in csv.DictReader(io.StringIO(text)):
-            cid = int(row["Card ID"])
-            counts[cid] = counts.get(cid, 0) + int(row["Count"])
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped:
+                cid = int(stripped)
+                counts[cid] = counts.get(cid, 0) + 1
         return cls.from_counts(counts)

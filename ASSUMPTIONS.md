@@ -56,3 +56,31 @@ simulator / competition page resolves the open items.
    `make ci`. The two CVEs it initially surfaced were fixed by bumping the (dev-only) pins:
    `pytest` → `>=9.0.3` (CVE-2025-71176), `black` → `>=26.3.1` (CVE-2026-32274). `pip-audit`
    requires network to fetch its advisory DB.
+
+# Assumptions — Engine wiring (§W2) pass
+
+10. **Engine downloaded; adapter wired.** The `pokemon-tcg-ai-battle` rules were accepted and
+    `make engine` fetched `sample_submission/` (the `cg/` Python package + native `libcg`) into
+    the gitignored `engine/`. `libcg.dylib` loads and runs on this machine.
+
+11. **deck.csv format corrected.** The real engine deck.csv is **60 lines, one integer card ID
+    per line, copies repeated, no header** (engine `main.py` does `int(csv[i])` for `i` in
+    `range(60)`). `Deck.to_csv()` now emits that; the earlier `Card ID,Card Name,Count` guess was
+    wrong. Verified: the engine ACCEPTS our deckbuilder deck (`errorType=0`).
+
+12. **Adapter parses the raw dict (no `cg` dependency).** The agent contract is
+    `agent(obs_dict) -> list[int]` (indices into `obs["select"]["option"]`).
+    `engine_adapter.parse_observation` walks the plain dict into our `GameState`;
+    `encode_action` is a validated pass-through of option indices. This keeps `ptcg_bot`
+    pure-stdlib (no import egress) and importable in CI without the engine. RAINBOW/TEAM_ROCKET
+    energy are mapped to Colorless for affordability (safe under-approximation).
+
+13. **Runtime card metadata (deferred).** `parse_observation` takes a `CardPool` for card lookups;
+    offline that is `load_pool()` (our CSV). At agent runtime on Kaggle the CSV is absent, so
+    `main` will build the pool from the engine's `all_card_data()` instead — a follow-up.
+
+14. **`make verify` is the live gate (§W2-3).** `tools/verify_env.py` loads `libcg`, starts a
+    battle with our deck, drives a random legal playthrough, and runs `parse_observation` on
+    every real observation. It is engine-gated (needs `make engine`), not part of `make ci`.
+    Still to build on the now-local engine: `legal` (option semantics), `belief`, `search`, and
+    the `main` entrypoint.

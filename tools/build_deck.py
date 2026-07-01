@@ -25,7 +25,7 @@ def main() -> None:
         raise SystemExit("refusing to write an illegal deck: " + "; ".join(problems))
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUT_PATH.write_text(deck.to_csv(pool), encoding="utf-8")
+    OUT_PATH.write_text(deck.to_csv(), encoding="utf-8")
 
     card = score(deck, pool)
     print(f"wrote {OUT_PATH}  ({deck.total} cards, score {card.total}/100)")

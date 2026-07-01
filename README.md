@@ -7,15 +7,16 @@ plus the accompanying **Strategy** writeup. Two linked submissions:
 - **Strategy** (our primary score) — a ≤2000-word writeup + figures, scored **70%** model/approach,
   **20%** deck construction, **10%** report.
 
-> Status: card data layer, rule spine, **deckbuilder**, internal **GameState**, and the
-> **explainable heuristic evaluator** are in place and tested behind an enforced quality/CI +
-> security gate. The forward model, search, and engine wiring are gated on the simulator schema.
+> Status: card data layer, rule spine, **deckbuilder**, internal **GameState**, the
+> **explainable heuristic evaluator**, and the **engine adapter** are in place and tested
+> behind an enforced quality/CI + security gate. `make verify` runs the **live engine** and
+> confirms it accepts our deck and that `parse_observation` handles real observations. The
+> gameplay modules (`legal`/`belief`/`search`) and the agent entrypoint (`main`) are next.
 >
-> **Engine note:** as of 2026-07-01 the simulator ships on the `pokemon-tcg-ai-battle`
-> competition (`sample_submission/cg/` + native `libcg`), but downloading it requires
-> **accepting that competition's rules** (join it) — `kaggle competitions files` lists it yet
-> `download` returns 403 until then. Accepting rules is a manual step; once done and downloaded,
-> `engine_adapter` is wired against `cg/api.py` (plan §W2). See [ASSUMPTIONS.md](ASSUMPTIONS.md).
+> **Engine:** the simulator (`pokemon-tcg-ai-battle`: `sample_submission/cg/` + native `libcg`)
+> is fetched locally into the gitignored `engine/` via `make engine` (after accepting that
+> competition's rules — a one-time manual step). `engine_adapter` parses the observation dict
+> directly (pure-stdlib, no `cg` import). See [ASSUMPTIONS.md](ASSUMPTIONS.md).
 
 ## The game we're playing (confirmed from the data)
 
@@ -64,8 +65,8 @@ ptcg_bot/        the submitted agent (pure stdlib once bundled)
   config.py      tunable heuristic/search weights (_f env-overridable)
   state.py       internal GameState model  [done, tested]
   evaluate.py    explainable state-value heuristic  [done, tested]
-  engine_adapter.py  isolates the simulator schema  [stub — see engine note below]
-  sim/effects/legal/belief/search/main  [gated on the engine schema, §W2]
+  engine_adapter.py  obs dict -> GameState + action encoding  [wired, tested vs live engine]
+  legal/belief/search/main  [next — build on the now-local engine]
 deckbuilder/     offline deck construction & optimization (the 20% deliverable)
 tools/           eval harness: verify_env/tournament/soak/tune/bundle/run_match
 tests/           pytest  [test_cards.py passing]
@@ -122,7 +123,7 @@ pool = load_pool()
 deck = build_deck(pool)
 assert validate(deck, pool) == []        # legal 60
 print(score(deck, pool).total)           # heuristic quality, 0..100
-print(deck.to_csv(pool))                  # submission deck.csv
+print(deck.to_csv())                       # submission deck.csv (60 bare card-ID lines)
 ```
 
 The full plan (architecture rationale, deckbuilder, writeup→rubric mapping, 11-week milestones,

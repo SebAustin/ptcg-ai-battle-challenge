@@ -135,17 +135,20 @@ def test_deck_from_counts_drops_zero_and_sorts():
 
 
 @pytest.mark.unit
-def test_deck_csv_round_trip(mini_pool):
+def test_deck_csv_round_trip():
     deck = Deck.from_counts({1: 2, 3: 4, 2: 54})
-    restored = Deck.from_csv(deck.to_csv(mini_pool))
+    restored = Deck.from_csv(deck.to_csv())
     assert restored.counts == deck.counts
 
 
 @pytest.mark.unit
-def test_deck_csv_quotes_names_with_commas():
-    pool = CardPool([mk_card(20, "Bill, the Great", "Item", text="Draw 2.")])
-    csv_text = Deck.from_counts({20: 1}).to_csv(pool)
-    assert '"Bill, the Great"' in csv_text
+def test_deck_csv_is_60_bare_id_lines():
+    # Engine format: one card ID per line, copies repeated, no header.
+    text = Deck.from_counts({1: 2, 3: 4, 2: 54}).to_csv()
+    lines = text.splitlines()
+    assert len(lines) == 60
+    assert all(line.lstrip("-").isdigit() for line in lines)  # every line is an int
+    assert lines.count("2") == 54  # copies repeated
 
 
 @pytest.mark.unit
@@ -183,7 +186,9 @@ def test_build_deck_is_deterministic(pool):
 @pytest.mark.integration
 def test_build_deck_csv_round_trips(pool):
     deck = build_deck(pool)
-    assert Deck.from_csv(deck.to_csv(pool)).counts == deck.counts
+    text = deck.to_csv()
+    assert len(text.splitlines()) == 60
+    assert Deck.from_csv(text).counts == deck.counts
 
 
 @pytest.mark.integration
