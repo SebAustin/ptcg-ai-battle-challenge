@@ -20,7 +20,9 @@ import matplotlib.pyplot as plt  # noqa: E402  (must follow use())
 
 _OUT = Path(__file__).resolve().parent / "figures"
 
-# Measured with tools/tournament.py over 24 games vs the random baseline.
+# Representative single-run win-rates vs the random baseline (tools/tournament).
+# The engine RNG is un-seeded, so runs vary — attack-first ~75-100%, develop-first
+# ~5-25%. These illustrative values show the qualitative gap, not fixed constants.
 _WINRATE_DEVELOP_FIRST = 20.8
 _WINRATE_ATTACK_FIRST = 100.0
 
@@ -74,7 +76,7 @@ def winrate_figure() -> Path:
     ax.axhline(50, ls="--", lw=1, color="#666")
     ax.set_ylim(0, 105)
     ax.set_ylabel("win-rate vs random (%)")
-    ax.set_title("Policy win-rate (24 games, self-play)")
+    ax.set_title("Policy win-rate vs random (representative run; engine RNG un-seeded)")
     for i, v in enumerate(values):
         ax.text(i, v + 1.5, f"{v:.1f}%", ha="center")
     return _save(fig, "winrate.png")

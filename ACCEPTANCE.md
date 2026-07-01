@@ -14,14 +14,14 @@ reproduce any row.
 | Deckbuilder deck is accepted by the live engine | PASS | `tools/verify_env.py` calls `game.battle_start(deck_ids, ...)` and exits non-zero unless the engine returns `errorType=0`; ASSUMPTIONS.md item 11 records this was verified after correcting the `deck.csv` format to 60 bare card-ID lines. |
 | Engine adapter parses real observations correctly | PASS | `ptcg_bot/engine_adapter.py:parse_observation()` is pure-stdlib (no `cg` import) and is exercised by `tools/verify_env.py`, which asserts `0 <= prizes_remaining <= 6` on every real observation during a full battle. |
 | Agent returns only legal, non-crashing selections | PASS | `ptcg_bot/main.py:agent()` wraps `choose()` in `try/except` with a legal fallback (`_fallback`/`_default_selection`); `tests/test_main.py::test_agent_plays_a_full_legal_game` drives a full game against the live engine to a decided result (integration, needs `engine/` + `data/`). |
-| Agent beats a random baseline | PASS (vs random only) | `tools/tournament.py` self-play harness: develop-first policy scored 20.8% vs random; switching `main.py`'s `_DEVELOP_PRIORITY`/attack-first ordering lifted it to 100% (24/24), per the measured constants in `writeup/figures.py` (`_WINRATE_DEVELOP_FIRST = 20.8`, `_WINRATE_ATTACK_FIRST = 100.0`). Not yet measured against a non-random opponent. |
+| Agent beats a random baseline | PASS (vs random only) | `tools/tournament.py` self-play harness: develop-first policy lost decisively (representative run 20.8%); attack-first ordering flips it to consistently winning (representative run 24/24). The engine RNG is un-seeded so figures vary run-to-run (attack-first ≈75–100% vs random). Not yet measured against a non-random competent opponent. |
 | Submission bundle is self-contained | PASS | `tools/bundle.py` copies the runtime-only module closure into `dist/submission/`, then re-imports it in a subprocess with the repo off `sys.path` (`_self_check()`); `tests/test_bundle.py` asserts `deckbuilder/` is excluded and no `__pycache__` remains (integration, needs `engine/` + `data/`). |
 | No network/subprocess egress in the shipped agent | PASS | `make audit` greps `ptcg_bot/` for `socket`/`urllib`/`requests`/`subprocess` imports and fails the build on a match; documented in `SECURITY.md`'s import audit section. |
 | Test suite coverage of shipped modules | PASS | 60 pytest test items across 6 files under `tests/` (56 `def test_*` functions, one of which is `@pytest.mark.parametrize`d with 5 cases, so pytest collects 60 total); integration tests skip cleanly without `data/`/`engine/`. |
-| IS-MCTS search / belief sampling | DEFERRED | No `legal.py`, `belief.py`, or `search.py` exist in `ptcg_bot/`; README and ASSUMPTIONS.md both flag this as "next." The agent is a 1-ply heuristic option policy, not a search. |
+| IS-MCTS search / belief sampling | BUILT (experimental, not shipped) | `ptcg_bot/search.py` + `belief.py` implement one-ply determinized lookahead over the engine's search API, exposed as `main.search_agent`. Measured WORSE than the heuristic (≈15–45% vs it), so `main.agent` stays the heuristic. Multi-world PIMC + `legal.py` remain deferred. See ASSUMPTIONS.md item 15. |
 | Heuristic weight tuning against real win-rate | DEFERRED | `tools/tune.py` is referenced by the `make tune` target but does not exist yet (`Makefile`: `test -f tools/tune.py && ... || echo "[pending]"`); weights in `ptcg_bot/config.py` are hand-set defaults, not tuned. |
 | Robustness soak testing | DEFERRED | `tools/soak.py` is referenced by `make soak` but does not exist yet (same guarded pattern as `tune`); `config.TURN_DEADLINE_S` (2.5s) is defined but unenforced by a timer today since there is no search loop to bound. |
-| Writeup figures generated and polished | DEFERRED | `writeup/figures.py` exists and is runnable (`make figures`) but needs `data/EN_Card_Data.csv`, which is not present in this environment; the `writeup/figures/` output directory has not been generated/committed here. |
+| Writeup figures generated | DONE (local) | `make figures` generates 3 PNGs (deck composition, quality-score breakdown, policy win-rate) into `writeup/figures/`. Output is gitignored/regenerable; upload to the Kaggle Media Gallery per `SUBMIT.md`. |
 
 ## Built
 
@@ -54,16 +54,19 @@ reproduce any row.
 
 ## Deferred
 
-- **Search layer** — `legal.py` (legal-move generation), `belief.py` (hidden-state world
-  sampling), `search.py` (bounded IS-MCTS with PIMC voting). None exist yet; this is the
-  main gap versus the architecture described in the README.
+- **Stronger search layer** — a one-ply determinized `search.py` + `belief.py` are built
+  (as `main.search_agent`) but measured worse than the heuristic, so not shipped. Still
+  deferred: `legal.py` (legal-move generation), multi-world belief sampling, and bounded
+  IS-MCTS with PIMC voting + a tempo-aware leaf evaluator — the path to actually beating
+  the heuristic.
 - **Weight tuning** — `tools/tune.py` (coordinate descent over `config.py` weights
   against a real fitness signal) is planned but not written.
 - **Robustness soak** — `tools/soak.py` (no-crash/no-timeout sweep over many seeds) is
   planned but not written; `config.TURN_DEADLINE_S` exists but has no enforcing timer
   yet since there's no search loop to bound.
-- **Stronger-opponent evaluation** — the measured 100% win-rate is against a random
-  legal-move baseline only; no non-random baseline has been implemented or measured.
+- **Stronger-opponent evaluation** — win-rate is measured against a random legal-move
+  baseline only (and, for the search A/B, against the heuristic). No competent non-random
+  opponent has been implemented or measured against.
 - **Writeup figures generation** — `writeup/figures.py` is written and runnable but has
   not been executed in this environment (requires `data/EN_Card_Data.csv`, which is
   gitignored competition data not present here); `writeup/figures/*.png` do not yet
@@ -75,12 +78,13 @@ reproduce any row.
 
 ## Next steps
 
-1. Implement `legal.py` over `GameState` so a search has legal moves to explore.
-2. Implement `belief.py` to sample hidden-state worlds from public observation info and
-   a deck prior.
-3. Implement `search.py` — bounded MCTS per sampled world, `evaluate.state_value` as the
-   leaf evaluator, PIMC-aggregated at the root — and wire it into `main.agent` behind the
-   `TURN_DEADLINE_S` budget with the existing heuristic as the timeout fallback.
+1. Scale the built one-ply `search.py`/`belief.py` toward real PIMC: sample **K** hidden
+   worlds (realistic deck prior, not filler IDs), roll out deeper, and give the leaf a
+   **tempo-aware** evaluator so it stops over-developing — then re-A/B via `tools/tournament
+   --opponent heuristic` and only ship `search_agent` as `agent` if it wins.
+2. Add `legal.py` (typed option semantics) so the search reasons about move *kinds*, and
+   bound search under `TURN_DEADLINE_S` with the heuristic as the timeout fallback.
+3. Build the runtime card pool from the engine's `all_card_data()` so the agent needs no CSV.
 4. Write `tools/soak.py` and run it before trusting search in a real submission.
 5. Write `tools/tune.py` and re-tune `config.py` once a stronger opponent (not just
    random) exists to tune against.

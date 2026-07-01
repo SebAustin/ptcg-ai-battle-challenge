@@ -91,10 +91,12 @@ This policy wasn't picked by intuition — it was the result of measuring an ear
 worse one. Our first working policy developed the board (ability → attach → evolve →
 play) and only attacked once nothing else was available. Measured with the self-play
 harness (`tools/tournament.py`, which drives the real `libcg` engine end to end) over
-24 games against a random legal-move baseline, that develop-first policy **lost**,
-winning only **20.8%** of decided games. Switching the priority so the agent attacks
-whenever it legally can — before developing further — lifted the same board evaluation
-logic to **100% (24/24)** against the same baseline. The lesson, which is the honest
+games against a random legal-move baseline, that develop-first policy **lost decisively**
+(representative run: 20.8% of decided games). Switching the priority so the agent attacks
+whenever it legally can — before developing further — flipped the same board evaluation
+logic to **consistently winning** (representative run: 24/24). The engine's internal RNG
+is un-seeded, so exact percentages vary run to run (attack-first lands roughly 75–100% vs
+random, develop-first roughly 5–25%); the qualitative gap is large and stable. The lesson, which is the honest
 finding of this project so far, is that over-developing the board while sitting on a
 usable attack was the dominant failure mode, not attack *selection*. That is exactly
 the kind of result a heuristic-only, well-instrumented agent can surface cheaply before
@@ -164,14 +166,19 @@ charts, not card art, in compliance with the competition's media rules.
 
 ## 5. Honesty: what this is, and isn't, yet
 
-The 100% figure is a win rate **against a random legal-move baseline**, over 24 games —
-a useful, cheap signal for catching gross policy errors (which it did), not a claim of
-strength against a competent opponent. The IS-MCTS search and belief-sampling layers
-that the architecture in §2.1 targets are designed but not yet implemented; the engine
-exposes hooks for driving a search loop that we intend to build against next. Runtime
-card metadata for the deployed agent (building the pool from the engine's own card data
-rather than our offline CSV) is also a known follow-up, tracked in `ASSUMPTIONS.md`,
-since the CSV will not be present in the Kaggle runtime.
+The win-rate is measured **against a random legal-move baseline** — a useful, cheap
+signal for catching gross policy errors (which it did), not a claim of strength against a
+competent opponent. Because the engine's RNG is un-seeded, the figures are representative
+single runs, not fixed constants (attack-first ≈75–100% vs random).
+
+A first cut of the IS-MCTS layer **is now implemented** — a one-ply determinized lookahead
+(`ptcg_bot/search.py` + `belief.py`) over the engine's `search_begin/step/end` hooks — and
+was A/B-tested against the shipped heuristic. It **currently loses** (≈15–45% vs the
+heuristic): with a single determinized world and a purely positional leaf evaluator, one-ply
+search drifts back toward over-developing. So the heuristic remains the shipped agent, and
+the honest next step is scaling to multi-world PIMC with a tempo-aware evaluator. Runtime
+card metadata (building the pool from the engine's own card data rather than our offline
+CSV, absent in the Kaggle runtime) is also a tracked follow-up in `ASSUMPTIONS.md`.
 
 ## 6. What's next
 

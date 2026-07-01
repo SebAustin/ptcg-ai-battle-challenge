@@ -89,7 +89,8 @@ simulator / competition page resolves the open items.
     single-world determinization; the resulting observation scored by a config-weighted
     positional heuristic). Measured with `make tournament --opponent heuristic` (sides
     alternated): the search agent wins only ~10% vs the attack-first heuristic and ~75% vs
-    random (both WORSE than the heuristic's 100% vs random). Diagnosis: the positional
+    random (both WORSE than the heuristic's ~75-100% vs random; note the engine RNG is
+    un-seeded, so win-rates vary run-to-run). Diagnosis: the positional
     evaluator rewards board/energy/hand, so one-ply search drifts back toward over-developing
     (the very failure attack-first fixed), and single-world determinization adds noise.
     **Therefore `agent` (shipped) stays the heuristic; `search_agent` is retained as

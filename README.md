@@ -67,7 +67,7 @@ ptcg_bot/        the submitted agent (pure stdlib once bundled)
   state.py       internal GameState model  [done, tested]
   evaluate.py    explainable state-value heuristic  [done, tested]
   engine_adapter.py  obs dict -> GameState + action encoding  [wired, tested vs live engine]
-  main.py        agent entrypoint — attack-first heuristic (shipped, 100% vs random)  [done]
+  main.py        agent entrypoint — attack-first heuristic (shipped; consistently beats random)  [done]
   search.py/belief.py  one-ply determinized lookahead  [built; not yet > heuristic — see ASSUMPTIONS.md]
   legal  [next — typed option semantics; scale search to multi-world PIMC]
 deckbuilder/     offline deck construction & optimization (the 20% deliverable)
