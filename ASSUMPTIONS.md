@@ -32,3 +32,27 @@ simulator / competition page resolves the open items.
 
 6. **Deterministic.** No RNG in construction — same pool → same deck — so results are reproducible
    and unit-testable. (`Math.random`-style variety can be added later once fitness is real.)
+
+# Assumptions — Decision-core heuristics + security scan pass
+
+7. **Engine is published but rules-gated (not a hard block anymore).** As of 2026-07-01 the
+   `pokemon-tcg-ai-battle` competition lists the engine (`sample_submission/cg/*.py` + native
+   `libcg`, and `ptcg_engine/`). `kaggle competitions files` lists them, but
+   `competitions download` returns **403** — the files require accepting that competition's
+   rules. Accepting rules is an outward-facing legal action for the **user** to take; the agency
+   guardrails forbid doing it automatically. **To unblock W2 wiring:** accept the
+   `pokemon-tcg-ai-battle` rules (join it) and download `sample_submission/`; then
+   `engine_adapter` is implemented against `cg/api.py` and `tools/verify_env.py` validates it.
+
+8. **The heuristic core is engine-independent, so it was built now.** `ptcg_bot/state.py` (our
+   own `GameState`) and `ptcg_bot/evaluate.py` (the explainable state-value heuristic) depend
+   only on `rules.py` + `config.py`, not on the wire schema — the adapter maps INTO `state.py`
+   later. `evaluate` computes exactly the features `config.py` already names. Still gated on the
+   schema (deferred): `sim`, `legal`, `belief`, `search`, `main`, and `engine_adapter` — these
+   need the running engine to build/verify against, so they were NOT built speculatively.
+
+9. **Dependency-CVE + static scan wired into the gate.** `make security` runs `bandit` (static,
+   on `ptcg_bot`+`deckbuilder`) and `pip-audit` (against `requirements.txt`), and is part of
+   `make ci`. The two CVEs it initially surfaced were fixed by bumping the (dev-only) pins:
+   `pytest` → `>=9.0.3` (CVE-2025-71176), `black` → `>=26.3.1` (CVE-2026-32274). `pip-audit`
+   requires network to fetch its advisory DB.

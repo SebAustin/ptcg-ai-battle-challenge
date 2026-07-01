@@ -7,8 +7,8 @@
 #
 # Pinned to the versions this project was developed and validated against.
 
-# Unit test runner (tests/).
-pytest>=8.0,<9
+# Unit test runner (tests/). >=9.0.3 patches CVE-2025-71176.
+pytest>=9.0.3,<10
 
 # Kaggle CLI — download competition data + upload the submission (see SUBMIT.md).
 # This machine authenticates via the new OAuth flow (~/.kaggle/credentials.json),
@@ -23,13 +23,18 @@ matplotlib>=3.8
 # a pure-stdlib dist/main.py, so NONE of these reach the submission. Run via the
 # Makefile: `make format`, `make lint`, `make typecheck`, `make ci`.
 ruff>=0.9,<1
-black>=24.0,<26
+black>=26.3.1,<27  # >=26.3.1 patches CVE-2026-32274
 isort>=5.13,<6
 mypy>=1.13,<2
 pre-commit>=4.0,<5
+bandit>=1.8,<2
+pip-audit>=2.7,<3
 
-# --- Simulator (TO WIRE IN WEEK 2) ------------------------------------------
-# The official PTCG battle engine is not yet on this machine. Once obtained,
-# pin it here and implement ptcg_bot/engine_adapter.py against its schema.
-# If it ships as a kaggle-environments environment, that dep goes here too.
-# kaggle-environments==<TBD>
+# --- Simulator (schema now published; access rules-gated) -------------------
+# As of 2026-07-01 the engine ships on the `pokemon-tcg-ai-battle` competition
+# under `sample_submission/` (a Python `cg/` package: api.py/game.py/sim.py +
+# native libcg.{so,dylib,dll}) and `ptcg_engine/`. It is vendored with the
+# submission, NOT a pip package — so there is no pin here. Downloading it
+# requires accepting that competition's rules (see ASSUMPTIONS.md / SUBMIT.md).
+# Once downloaded, implement ptcg_bot/engine_adapter.py against cg/api.py and
+# wire tools/verify_env.py to assert round-trip fidelity (plan §W2).

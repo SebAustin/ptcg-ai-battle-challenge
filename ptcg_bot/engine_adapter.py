@@ -2,17 +2,20 @@
 
 THE ONLY MODULE THAT CHANGES WHEN THE SIMULATOR API LANDS.
 
-We do not yet have the competition's battle engine on this machine, and its
-observation/action schema is unknown. Everything else in ``ptcg_bot`` is written
-against our OWN internal model (:mod:`ptcg_bot.state`, once it exists). This
-adapter is the single translation layer:
+The engine is now published (2026-07-01) on the ``pokemon-tcg-ai-battle``
+competition as a vendored Python ``cg/`` package (api.py/game.py/sim.py +
+native ``libcg``), but downloading it is gated on accepting that competition's
+rules, so its observation/action schema is not yet readable here (see
+ASSUMPTIONS.md). Everything else in ``ptcg_bot`` is written against our OWN
+internal model (:mod:`ptcg_bot.state`), which already exists and is exercised by
+:mod:`ptcg_bot.evaluate`. This adapter is the single translation layer:
 
     sim observation  --parse_observation-->  internal GameState
     internal Action  --encode_action------>  sim action
 
-When the engine arrives (Week 2 of the plan), implement the two functions below
-against its real schema and wire ``tools/verify_env.py`` to assert round-trip
-fidelity and the rule-variant constants in :mod:`ptcg_bot.rules`.
+Once the sample_submission is downloaded, implement the two functions below
+against ``cg/api.py`` and wire ``tools/verify_env.py`` to assert round-trip
+fidelity and the rule-variant constants in :mod:`ptcg_bot.rules` (plan §W2).
 
 Keeping this stub explicit (rather than absent) means imports resolve and the
 heuristic/deckbuilder work can proceed in parallel against synthetic states.

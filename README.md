@@ -7,8 +7,15 @@ plus the accompanying **Strategy** writeup. Two linked submissions:
 - **Strategy** (our primary score) — a ≤2000-word writeup + figures, scored **70%** model/approach,
   **20%** deck construction, **10%** report.
 
-> Status: **scaffolding** (plan §W1). The card data layer and the rule spine are in place and
-> tested; the forward model, search, deckbuilder, and harness land in subsequent weeks.
+> Status: card data layer, rule spine, **deckbuilder**, internal **GameState**, and the
+> **explainable heuristic evaluator** are in place and tested behind an enforced quality/CI +
+> security gate. The forward model, search, and engine wiring are gated on the simulator schema.
+>
+> **Engine note:** as of 2026-07-01 the simulator ships on the `pokemon-tcg-ai-battle`
+> competition (`sample_submission/cg/` + native `libcg`), but downloading it requires
+> **accepting that competition's rules** (join it) — `kaggle competitions files` lists it yet
+> `download` returns 403 until then. Accepting rules is a manual step; once done and downloaded,
+> `engine_adapter` is wired against `cg/api.py` (plan §W2). See [ASSUMPTIONS.md](ASSUMPTIONS.md).
 
 ## The game we're playing (confirmed from the data)
 
@@ -55,8 +62,10 @@ ptcg_bot/        the submitted agent (pure stdlib once bundled)
   rules.py       SOURCE OF TRUTH for the variant (verified vs the engine)
   cards.py       typed Card model + CSV loader  [done, tested]
   config.py      tunable heuristic/search weights (_f env-overridable)
-  engine_adapter.py  isolates the unknown simulator schema  [stub, W2]
-  state/sim/effects/legal/belief/search/evaluate/main  [W3-W8]
+  state.py       internal GameState model  [done, tested]
+  evaluate.py    explainable state-value heuristic  [done, tested]
+  engine_adapter.py  isolates the simulator schema  [stub — see engine note below]
+  sim/effects/legal/belief/search/main  [gated on the engine schema, §W2]
 deckbuilder/     offline deck construction & optimization (the 20% deliverable)
 tools/           eval harness: verify_env/tournament/soak/tune/bundle/run_match
 tests/           pytest  [test_cards.py passing]

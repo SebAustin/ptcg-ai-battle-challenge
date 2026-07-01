@@ -12,9 +12,11 @@ RUFF := $(VENV)/bin/ruff
 BLACK := $(VENV)/bin/black
 ISORT := $(VENV)/bin/isort
 MYPY := $(VENV)/bin/mypy
+BANDIT := $(VENV)/bin/bandit
+PIPAUDIT := $(VENV)/bin/pip-audit
 
 .DEFAULT_GOAL := help
-.PHONY: help setup data test lint format typecheck audit ci deck verify tournament soak bundle tune check submit freeze clean
+.PHONY: help setup data test lint format typecheck audit security ci deck verify tournament soak bundle tune check submit freeze clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -56,7 +58,11 @@ audit: ## Enforce SECURITY.md — no network/subprocess imports in the agent
 		echo "[audit] FORBIDDEN import in ptcg_bot/ — the agent must be pure-stdlib with no egress (SECURITY.md)"; exit 1; \
 	else echo "[audit] ok — no socket/urllib/requests/subprocess imports in ptcg_bot/"; fi
 
-ci: lint typecheck audit test ## Engine-free gate CI runs (lint + types + audit + tests)
+security: ## Static (bandit) + dependency-CVE (pip-audit) scan; pip-audit needs network
+	$(BANDIT) -q -r ptcg_bot deckbuilder
+	$(PIPAUDIT) -r requirements.txt
+
+ci: lint typecheck audit security test ## Engine-free gate CI runs (lint + types + audit + security + tests)
 
 deck: ## Build the submission deck.csv into dist/ (offline deckbuilder)
 	$(PY) -m tools.build_deck
