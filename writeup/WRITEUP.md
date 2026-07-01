@@ -170,8 +170,9 @@ quality/security gate, `make verify` for live-engine deck acceptance and observa
 round-tripping, and `make tournament` for the self-play win-rate numbers. The figures
 referenced in this writeup's Media Gallery (`writeup/figures.py`, run via `make
 figures`) are generated directly from this codebase — deck composition, the deck-score
-breakdown, and the develop-first-vs-attack-first win-rate comparison — and are original
-charts, not card art, in compliance with the competition's media rules.
+breakdown, the develop-first-vs-attack-first win-rate, and the search-vs-heuristic
+progress chart — and are original charts, not card art, in compliance with the
+competition's media rules.
 
 ## 5. Honesty: what this is, and isn't, yet
 

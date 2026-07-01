@@ -26,6 +26,14 @@ _OUT = Path(__file__).resolve().parent / "figures"
 _WINRATE_DEVELOP_FIRST = 20.8
 _WINRATE_ATTACK_FIRST = 100.0
 
+# Search vs the heuristic (mirror A/B) across the build passes — representative
+# runs; the point is the trend from "much worse" to "parity", not exact values.
+_SEARCH_PROGRESS = (
+    ("1-ply\n(buggy)", 10.0),
+    ("PIMC +\nperspective fix", 47.0),
+    ("+ realistic\ndeterminization", 52.0),
+)
+
 
 def _save(fig: plt.Figure, name: str) -> Path:
     _OUT.mkdir(parents=True, exist_ok=True)
@@ -82,6 +90,20 @@ def winrate_figure() -> Path:
     return _save(fig, "winrate.png")
 
 
+def search_progress_figure() -> Path:
+    labels = [label for label, _ in _SEARCH_PROGRESS]
+    values = [value for _, value in _SEARCH_PROGRESS]
+    fig, ax = plt.subplots(figsize=(5.5, 3.2))
+    ax.bar(labels, values, color=["#9aa0a6", "#2e86ab", "#d1495b"])
+    ax.axhline(50, ls="--", lw=1, color="#666")
+    ax.set_ylim(0, 60)
+    ax.set_ylabel("win-rate vs heuristic (%)")
+    ax.set_title("Search vs heuristic — honest progress (mirror A/B; RNG un-seeded)")
+    for i, value in enumerate(values):
+        ax.text(i, value + 1, f"{value:.0f}%", ha="center")
+    return _save(fig, "search_progress.png")
+
+
 def main() -> None:
     from deckbuilder import build_deck, score
     from ptcg_bot.cards import DEFAULT_CSV, load_pool
@@ -95,6 +117,7 @@ def main() -> None:
         composition_figure(pool, deck),
         score_figure(score(deck, pool)),
         winrate_figure(),
+        search_progress_figure(),
     ]
     for path in paths:
         print(f"wrote {path}")
