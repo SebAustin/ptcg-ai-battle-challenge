@@ -84,8 +84,8 @@ deck: ## Build the submission deck.csv into dist/ (offline deckbuilder)
 verify: ## Validate our model against the LIVE engine (needs `make engine`; plan §W2-3)
 	$(PY) -m tools.verify_env
 
-tournament: ## Win-rate matrix vs baselines + deck-vs-deck (plan §W4)
-	@test -f tools/tournament.py && $(PY) tools/tournament.py $(ARGS) || echo "[pending] tools/tournament.py — plan §W4"
+tournament: ## Self-play win-rate vs baselines (needs engine+data; plan §W4)
+	$(PY) -m tools.tournament $(ARGS)
 
 soak: ## Robustness soak: no crash / no timeout over many seeds (plan §W4)
 	@test -f tools/soak.py && $(PY) tools/soak.py $(or $(ARGS),--seeds 25) || echo "[pending] tools/soak.py — plan §W4"

@@ -37,12 +37,21 @@ def test_deck_request_returns_60_ids(tmp_path, monkeypatch):
 
 
 @pytest.mark.unit
-def test_main_prefers_develop_then_attack_over_end():
-    # options: END(14), ATTACK(13), ATTACH(8). ATTACH outranks ATTACK and END.
+def test_main_attacks_when_able_over_developing():
+    # options: END(14), ATTACK(13), ATTACH(8). Attack-first: ATTACK wins.
     obs = {
         "select": {"maxCount": 1, "option": [{"type": 14}, {"type": 13}, {"type": 8}]}
     }
-    assert agent(obs) == [2]  # the ATTACH option
+    assert agent(obs) == [1]  # the ATTACK option (index 1)
+
+
+@pytest.mark.unit
+def test_main_develops_when_no_attack_available():
+    # No ATTACK option -> develop: ATTACH(8) over PLAY(7) over END(14).
+    obs = {
+        "select": {"maxCount": 1, "option": [{"type": 14}, {"type": 7}, {"type": 8}]}
+    }
+    assert agent(obs) == [2]  # ATTACH (index 2)
 
 
 @pytest.mark.unit
