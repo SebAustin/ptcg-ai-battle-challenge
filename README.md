@@ -93,5 +93,28 @@ pre-commit install   # optional: run the gate automatically on every commit
 > when `data/EN_Card_Data.csv` is absent (e.g. in CI, where the card data can't be
 > redistributed). Run `make data` to exercise them locally.
 
+## Building a deck
+
+`deckbuilder/` constructs a legal 60-card deck from the pool (the Strategy 20% deliverable).
+Decks are ultimately meant to be scored by the same tournament harness as the agent; until that
+engine is wired, construction optimizes an **offline deck-quality heuristic**
+(`deckbuilder/score.py`: consistency, energy balance, opening reliability, attacker power, prize
+safety). See [ASSUMPTIONS.md](ASSUMPTIONS.md) for the decisions behind it.
+
+```bash
+make deck        # writes dist/deck.csv + prints the score breakdown and rationale
+```
+
+```python
+from ptcg_bot.cards import load_pool
+from deckbuilder import build_deck, score, validate
+
+pool = load_pool()
+deck = build_deck(pool)
+assert validate(deck, pool) == []        # legal 60
+print(score(deck, pool).total)           # heuristic quality, 0..100
+print(deck.to_csv(pool))                  # submission deck.csv
+```
+
 The full plan (architecture rationale, deckbuilder, writeup→rubric mapping, 11-week milestones,
 risks) lives in the approved plan file referenced from the project notes.

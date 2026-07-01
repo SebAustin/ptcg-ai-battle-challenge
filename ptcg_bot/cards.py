@@ -160,6 +160,10 @@ class Card:
     resistance: EnergyType | None
     retreat: int | None
     moves: tuple[Move, ...]
+    # Card-level rules text for Trainers / Special Energy (the "Effect
+    # Explanation" column). Empty for Pokémon (whose text lives on ``moves``)
+    # and for Basic Energy. Lets the deckbuilder classify Trainers by role.
+    text: str = ""
 
     # --- supertype helpers ---------------------------------------------------
     @property
@@ -270,6 +274,10 @@ def _build_card(rows: list[dict[str, str]]) -> Card:
         for r in rows
         if _clean(r.get("Move Name"))
     )
+    # Trainers / Special Energy carry their rules in the head row's Effect
+    # Explanation (the move-name is blank, so no Move is built above). Pokémon
+    # text is already captured per-move, so leave their card-level text empty.
+    card_text = "" if moves else _clean(head.get("Effect Explanation"))
     return Card(
         card_id=int(head["Card ID"]),
         name=_clean(head.get("Card Name")),
@@ -285,6 +293,7 @@ def _build_card(rows: list[dict[str, str]]) -> Card:
         resistance=normalize_type(head.get("Resistance (Type)")),
         retreat=int(retreat_raw) if retreat_raw.isdigit() else None,
         moves=moves,
+        text=card_text,
     )
 
 

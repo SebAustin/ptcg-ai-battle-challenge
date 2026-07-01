@@ -33,6 +33,6 @@ repos:
     rev: v1.14.1
     hooks:
       - id: mypy
-        files: ^ptcg_bot/
-        args: ["ptcg_bot"]
+        files: ^(ptcg_bot|deckbuilder)/
+        args: ["ptcg_bot", "deckbuilder"]
         pass_filenames: false

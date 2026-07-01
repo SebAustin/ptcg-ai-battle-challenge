@@ -14,7 +14,7 @@ ISORT := $(VENV)/bin/isort
 MYPY := $(VENV)/bin/mypy
 
 .DEFAULT_GOAL := help
-.PHONY: help setup data test lint format typecheck audit ci verify tournament soak bundle tune check submit freeze clean
+.PHONY: help setup data test lint format typecheck audit ci deck verify tournament soak bundle tune check submit freeze clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -48,8 +48,8 @@ lint: ## Check lint + import order + formatting, no writes (CI-safe)
 	$(ISORT) --check-only .
 	$(BLACK) --check .
 
-typecheck: ## Static type-check the agent package (mypy)
-	$(MYPY) ptcg_bot
+typecheck: ## Static type-check the agent + deckbuilder packages (mypy)
+	$(MYPY) ptcg_bot deckbuilder
 
 audit: ## Enforce SECURITY.md — no network/subprocess imports in the agent
 	@if grep -rEn '^[[:space:]]*(import|from)[[:space:]]+(socket|urllib|requests|subprocess)' ptcg_bot --include='*.py'; then \
@@ -57,6 +57,9 @@ audit: ## Enforce SECURITY.md — no network/subprocess imports in the agent
 	else echo "[audit] ok — no socket/urllib/requests/subprocess imports in ptcg_bot/"; fi
 
 ci: lint typecheck audit test ## Engine-free gate CI runs (lint + types + audit + tests)
+
+deck: ## Build the submission deck.csv into dist/ (offline deckbuilder)
+	$(PY) -m tools.build_deck
 
 # --- Harness targets (tools land per the plan; guarded until they exist) -----
 verify: ## Cross-check sim math + rule variant against the LIVE engine (plan §W2-3)

@@ -38,11 +38,11 @@ disallow_untyped_defs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 no_implicit_optional = true
-# The Makefile runs `mypy ptcg_bot`; these overrides keep the pre-commit hook
-# (which may see more paths) sane for the scaffold stubs and untyped tests.
+# The Makefile type-checks `ptcg_bot` + `deckbuilder`; these overrides keep the
+# untyped tests and the not-yet-written tool stubs from failing the gate.
 
 [[tool.mypy.overrides]]
-module = ["tests.*", "tools.*", "deckbuilder.*"]
+module = ["tests.*", "tools.*"]
 disallow_untyped_defs = false
 ignore_errors = true
 
