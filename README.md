@@ -73,5 +73,25 @@ make test     # run the unit suite
 make help     # list all targets
 ```
 
+## Development / quality gate
+
+The dev tooling (ruff · isort · black · mypy) is config-driven from `pyproject.toml` and is
+**dev-only** — none of it ships in the bundled agent. GitHub Actions runs the same gate on every
+push (`.github/workflows/ci.yml`).
+
+```bash
+make format      # auto-fix: ruff --fix + isort + black
+make lint        # check-only: ruff + isort + black --check
+make typecheck   # mypy ptcg_bot
+make audit       # SECURITY.md guard: no socket/urllib/requests/subprocess imports
+make ci          # the full engine-free gate: lint + typecheck + audit + test
+
+pre-commit install   # optional: run the gate automatically on every commit
+```
+
+> The 5 dataset-backed tests in `tests/test_cards.py` are marked `integration` and **skip**
+> when `data/EN_Card_Data.csv` is absent (e.g. in CI, where the card data can't be
+> redistributed). Run `make data` to exercise them locally.
+
 The full plan (architecture rationale, deckbuilder, writeup→rubric mapping, 11-week milestones,
 risks) lives in the approved plan file referenced from the project notes.

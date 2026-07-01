@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gate:
+    name: Quality gate (lint · types · audit · tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      # Reuse the exact gate developers run locally: `make setup` builds the
+      # .venv and installs dev deps; `make ci` = lint + typecheck + audit + test.
+      # The competition dataset is NOT in the repo, so the integration tests in
+      # tests/test_cards.py skip cleanly here (see the `pool` fixture).
+      - name: Install dev environment
+        run: make setup
+
+      - name: Run quality gate
+        run: make ci

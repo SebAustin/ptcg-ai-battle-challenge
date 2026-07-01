@@ -18,6 +18,16 @@ kaggle>=2.2
 # Writeup figures (writeup/figures.py). Not needed by the agent or the engine.
 matplotlib>=3.8
 
+# --- Quality gate (dev-only; excluded from the bundled agent) ----------------
+# Format / imports / lint / types + the pre-commit runner. tools/bundle.py ships
+# a pure-stdlib dist/main.py, so NONE of these reach the submission. Run via the
+# Makefile: `make format`, `make lint`, `make typecheck`, `make ci`.
+ruff>=0.9,<1
+black>=24.0,<26
+isort>=5.13,<6
+mypy>=1.13,<2
+pre-commit>=4.0,<5
+
 # --- Simulator (TO WIRE IN WEEK 2) ------------------------------------------
 # The official PTCG battle engine is not yet on this machine. Once obtained,
 # pin it here and implement ptcg_bot/engine_adapter.py against its schema.

@@ -7,8 +7,14 @@ PIP := $(VENV)/bin/pip
 KAGGLE := $(VENV)/bin/kaggle
 COMP := pokemon-tcg-ai-battle-challenge-strategy
 
+# Quality-gate tools (dev-only; see requirements.txt + pyproject.toml).
+RUFF := $(VENV)/bin/ruff
+BLACK := $(VENV)/bin/black
+ISORT := $(VENV)/bin/isort
+MYPY := $(VENV)/bin/mypy
+
 .DEFAULT_GOAL := help
-.PHONY: help setup data test verify tournament soak bundle tune check submit freeze clean
+.PHONY: help setup data test lint format typecheck audit ci verify tournament soak bundle tune check submit freeze clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -28,8 +34,29 @@ data: ## Download the competition card data into data/ (~320 MB incl. PDFs)
 	$(KAGGLE) competitions download -c $(COMP) -f "Card_ID List_EN.pdf" -p data/
 	$(KAGGLE) competitions download -c $(COMP) -f "Card_ID List_JP.pdf" -p data/
 
-test: ## Run the unit test suite
+test: ## Run the test suite (integration tests skip without local data/)
 	$(PY) -m pytest tests/ -q
+
+# --- Quality gate (dev-only; none of this ships in dist/main.py) --------------
+format: ## Auto-fix lint, sort imports, format (ruff --fix + isort + black)
+	$(RUFF) check --fix .
+	$(ISORT) .
+	$(BLACK) .
+
+lint: ## Check lint + import order + formatting, no writes (CI-safe)
+	$(RUFF) check .
+	$(ISORT) --check-only .
+	$(BLACK) --check .
+
+typecheck: ## Static type-check the agent package (mypy)
+	$(MYPY) ptcg_bot
+
+audit: ## Enforce SECURITY.md — no network/subprocess imports in the agent
+	@if grep -rEn '^[[:space:]]*(import|from)[[:space:]]+(socket|urllib|requests|subprocess)' ptcg_bot --include='*.py'; then \
+		echo "[audit] FORBIDDEN import in ptcg_bot/ — the agent must be pure-stdlib with no egress (SECURITY.md)"; exit 1; \
+	else echo "[audit] ok — no socket/urllib/requests/subprocess imports in ptcg_bot/"; fi
+
+ci: lint typecheck audit test ## Engine-free gate CI runs (lint + types + audit + tests)
 
 # --- Harness targets (tools land per the plan; guarded until they exist) -----
 verify: ## Cross-check sim math + rule variant against the LIVE engine (plan §W2-3)
