@@ -99,7 +99,7 @@ make format      # auto-fix: ruff --fix + isort + black
 make lint        # check-only: ruff + isort + black --check
 make typecheck   # mypy ptcg_bot
 make audit       # SECURITY.md guard: no socket/urllib/requests/subprocess imports
-make ci          # the full engine-free gate: lint + typecheck + audit + test
+make ci          # the full engine-free gate: lint + typecheck + audit + security + test
 
 pre-commit install   # optional: run the gate automatically on every commit
 ```
