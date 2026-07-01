@@ -6,6 +6,8 @@ PY := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 KAGGLE := $(VENV)/bin/kaggle
 COMP := pokemon-tcg-ai-battle-challenge-strategy
+SIM_COMP := pokemon-tcg-ai-battle
+ENGINE_DIR := engine
 
 # Quality-gate tools (dev-only; see requirements.txt + pyproject.toml).
 RUFF := $(VENV)/bin/ruff
@@ -16,7 +18,7 @@ BANDIT := $(VENV)/bin/bandit
 PIPAUDIT := $(VENV)/bin/pip-audit
 
 .DEFAULT_GOAL := help
-.PHONY: help setup data test lint format typecheck audit security ci deck verify tournament soak bundle tune check submit freeze clean
+.PHONY: help setup data engine test lint format typecheck audit security ci deck verify tournament soak bundle tune check submit freeze clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -35,6 +37,13 @@ data: ## Download the competition card data into data/ (~320 MB incl. PDFs)
 	$(KAGGLE) competitions download -c $(COMP) -f JP_Card_Data.csv -p data/
 	$(KAGGLE) competitions download -c $(COMP) -f "Card_ID List_EN.pdf" -p data/
 	$(KAGGLE) competitions download -c $(COMP) -f "Card_ID List_JP.pdf" -p data/
+
+engine: ## Download the sim engine + sample_submission into engine/ (accept SIM_COMP rules first!)
+	@echo "Requires ACCEPTING the rules of https://www.kaggle.com/competitions/$(SIM_COMP)/rules (a 403 means you have not joined yet)."
+	@mkdir -p $(ENGINE_DIR)
+	$(KAGGLE) competitions download -c $(SIM_COMP) -p $(ENGINE_DIR) -o
+	cd $(ENGINE_DIR) && unzip -oq $(SIM_COMP).zip 'sample_submission/*' 'ptcg_engine/*' && rm -f $(SIM_COMP).zip
+	@echo "Done -> $(ENGINE_DIR)/ (gitignored). Next: wire ptcg_bot/engine_adapter.py against $(ENGINE_DIR)/sample_submission/sample_submission/cg/api.py"
 
 test: ## Run the test suite (integration tests skip without local data/)
 	$(PY) -m pytest tests/ -q

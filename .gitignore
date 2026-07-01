@@ -21,6 +21,10 @@ data/*.csv
 data/*.pdf
 data/*.json
 
+# Simulation engine + sample_submission (competition IP, "Competition Use Only").
+# Fetch locally with `make engine` after accepting the pokemon-tcg-ai-battle rules.
+engine/
+
 # OS / editor
 .DS_Store
 *.swp
