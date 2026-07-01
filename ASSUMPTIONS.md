@@ -121,3 +121,15 @@ simulator / competition page resolves the open items.
     Verified: it plays full legal games against the live engine to a decided result. Deferred:
     scoring options with `evaluate.state_value` + the engine's search hooks (`legal`/`belief`/
     `search`), which need a runtime pool built from the engine's `all_card_data`.
+
+17. **Deck fitness tuning by self-play is built; no deck robustly beats the default.**
+    `tools/tune.py` (`make tune`) generates candidate decks along two axes — attacker-line
+    **rank** × **energy count** — and scores each by **real win-rate vs the default**, both
+    sides piloted by the heuristic (fast, ~0.15 s/game), sides alternated. Findings:
+    (a) the offline `score.py` is a **weak predictor** — an offline-100 deck won only ~53% while
+    an offline-97.5 deck spiked to ~70% in one sample; (b) but that spike was **noise** — the
+    un-seeded engine RNG makes 30-game evals unreliable, and the top candidate regressed to
+    **48.8% over 80 games** (parity). So under the heuristic pilot the rank×energy variants are
+    all ~equal, **no candidate robustly beats the default, and the default deck is kept.**
+    The tuner is the tool for future deck search but needs large samples; its own verdict now
+    warns about small-sample noise and asks to confirm any leader with a large `--games` run.

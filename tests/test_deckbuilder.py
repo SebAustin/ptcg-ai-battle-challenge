@@ -7,6 +7,8 @@ when the dataset is absent (same policy as tests/test_cards.py).
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from deckbuilder import build_deck, classify, score, validate
@@ -194,3 +196,39 @@ def test_build_deck_csv_round_trips(pool):
 @pytest.mark.integration
 def test_build_deck_scores_reasonably(pool):
     assert score(build_deck(pool), pool).total >= 80.0
+
+
+@pytest.mark.integration
+def test_build_deck_attacker_rank_varies(pool):
+    # The tuner's rank axis must yield distinct, still-legal 60-card decks.
+    d0 = build_deck(pool, attacker_rank=0)
+    d1 = build_deck(pool, attacker_rank=1)
+    assert validate(d0, pool) == [] and validate(d1, pool) == []
+    assert d0.total == 60 and d1.total == 60
+    assert d0.counts != d1.counts  # a different attacker line
+
+
+@pytest.mark.integration
+def test_build_deck_energy_param(pool):
+    deck = build_deck(pool, target_energy=14)
+    assert validate(deck, pool) == []
+    assert deck.total == 60
+
+
+@pytest.mark.integration
+def test_tuner_runs_and_writes_best_deck():
+    root = Path(__file__).resolve().parent.parent
+    if not (
+        root / "engine" / "sample_submission" / "sample_submission" / "cg" / "api.py"
+    ).exists():
+        pytest.skip("engine not present (run `make engine`)")
+    if not DEFAULT_CSV.exists():
+        pytest.skip("competition dataset not present (run `make data`)")
+
+    from tools import tune
+
+    tune.main(["--games", "2"])  # tiny sample: just exercise the pipeline
+    out = root / "dist" / "best_deck.csv"
+    lines = [ln for ln in out.read_text().splitlines() if ln.strip()]
+    assert len(lines) == 60
+    assert all(ln.lstrip("-").isdigit() for ln in lines)

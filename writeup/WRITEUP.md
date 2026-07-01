@@ -154,6 +154,15 @@ heuristic, and — more importantly — the **live engine accepts it outright**
 legality is not just asserted by our own validator but confirmed against the actual
 simulator the agent will be judged in.
 
+We also validated deck *strength* with real self-play: `tools/tune.py` (`make tune`)
+generates candidate decks (attacker-rank × energy) and scores each by win-rate vs the
+default, both piloted by the heuristic. Two honest findings fell out of it: the offline
+score is a **weak predictor** of real win-rate (an offline-100 deck underperformed an
+offline-97.5 one), and — because the engine RNG is un-seeded — small samples are noisy
+(a 30-game "70%" leader regressed to ~49% over 80 games). Over large samples the deck
+variants are at parity, so no candidate robustly beats the default and we keep it; the
+tuner remains the fitness harness for future, larger-budget deck search.
+
 ## 4. Report and evidence (10%)
 
 Every claim above is backed by a runnable measurement, not a guess: `make ci` for the

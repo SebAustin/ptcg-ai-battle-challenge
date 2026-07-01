@@ -95,8 +95,8 @@ tournament: ## Self-play win-rate vs baselines (needs engine+data; plan §W4)
 soak: ## Robustness soak: no crash / no timeout over many seeds (plan §W4)
 	@test -f tools/soak.py && $(PY) tools/soak.py $(or $(ARGS),--seeds 25) || echo "[pending] tools/soak.py — plan §W4"
 
-tune: ## Coordinate-descent weight tuner -> tools/best_config.env (plan §W6)
-	@test -f tools/tune.py && $(PY) -u tools/tune.py $(ARGS) || echo "[pending] tools/tune.py — plan §W6"
+tune: ## Deck fitness tuning by self-play (rank×energy vs default; needs engine+data)
+	$(PY) -m tools.tune $(ARGS)
 
 bundle: ## Package dist/submission/ (main.py + deck.csv + ptcg_bot + cg) + zip (needs engine+data)
 	$(PY) -m tools.bundle

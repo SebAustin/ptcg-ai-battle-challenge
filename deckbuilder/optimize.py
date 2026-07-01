@@ -57,9 +57,15 @@ def _affordable_on(card: Card, etype: EnergyType | None) -> bool:
     return False
 
 
-def build_deck(pool: CardPool, *, target_energy: int = _TARGET_ENERGY) -> Deck:
-    """Construct a legal 60-card deck around the pool's strongest attacker line."""
-    arch: Archetype = choose_archetype(pool)
+def build_deck(
+    pool: CardPool, *, attacker_rank: int = 0, target_energy: int = _TARGET_ENERGY
+) -> Deck:
+    """Construct a legal 60-card deck around an attacker line.
+
+    ``attacker_rank`` (0 = strongest) and ``target_energy`` are the tuner's two
+    candidate axes; the defaults reproduce the canonical deck.
+    """
+    arch: Archetype = choose_archetype(pool, attacker_rank)
 
     counts: dict[int, int] = {}
     for cid, n in zip(arch.line, arch.counts, strict=True):

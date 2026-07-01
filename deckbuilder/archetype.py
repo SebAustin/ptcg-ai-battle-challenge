@@ -81,23 +81,36 @@ def primary_energy_type(attacker: Card) -> EnergyType | None:
     return None
 
 
-def choose_archetype(pool: CardPool) -> Archetype:
-    """Select the strongest attacker whose line bottoms out at a Basic Pokémon."""
+def choose_archetype(pool: CardPool, rank: int = 0) -> Archetype:
+    """Select an attacker whose line bottoms out at a Basic Pokémon.
+
+    ``rank`` picks among the Basic-anchored attackers ordered by offense score:
+    0 = strongest (the default), 1 = next, etc. Used by the tuner to generate
+    candidate decks. Out-of-range ranks clamp to the last acceptable attacker.
+    """
     candidates = [c for c in pool.pokemon if c.hp and best_fixed_dpe(c) > 0]
     candidates.sort(
         key=lambda c: (offense_score(c), c.hp or 0, -c.card_id), reverse=True
     )
 
+    acceptable: list[tuple[Card, list[Card]]] = []
     for attacker in candidates:
         chain = evolution_chain(pool, attacker)
-        if not chain[0].is_basic_pokemon:
-            continue  # unbuildable line (missing pre-evolution) — skip
-        counts = _LINE_COUNTS.get(len(chain), (3,) * len(chain))
-        return Archetype(
-            line=tuple(c.card_id for c in chain),
-            counts=counts,
-            energy_type=primary_energy_type(attacker),
-            attacker_id=attacker.card_id,
+        if chain[0].is_basic_pokemon:
+            acceptable.append((attacker, chain))
+            if len(acceptable) > rank:
+                break  # have enough to satisfy this rank
+
+    if not acceptable:
+        raise ValueError(
+            "no attacker with a Basic-anchored evolution line found in pool"
         )
 
-    raise ValueError("no attacker with a Basic-anchored evolution line found in pool")
+    attacker, chain = acceptable[min(rank, len(acceptable) - 1)]
+    counts = _LINE_COUNTS.get(len(chain), (3,) * len(chain))
+    return Archetype(
+        line=tuple(c.card_id for c in chain),
+        counts=counts,
+        energy_type=primary_energy_type(attacker),
+        attacker_id=attacker.card_id,
+    )
