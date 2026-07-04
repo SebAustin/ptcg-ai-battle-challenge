@@ -56,6 +56,25 @@ def basic_pokemon_ids() -> tuple[int, ...]:
 
 
 @cache
+def card_power() -> dict[int, tuple[int, int]]:
+    """Map ``cardId -> (best attack damage, hp)`` for Pokémon, or ``{}`` offline.
+
+    The cheap "how strong is this card" signal used to rank card selections
+    (setup active, promotion, search targets, discards).
+    """
+    damage = attack_damage()
+    table: dict[int, tuple[int, int]] = {}
+    try:
+        for c in _all_cards():
+            attacks = getattr(c, "attacks", None) or ()
+            best = max((damage.get(int(a), 0) for a in attacks), default=0)
+            table[int(c.cardId)] = (best, int(getattr(c, "hp", 0) or 0))
+    except Exception:
+        return {}
+    return table
+
+
+@cache
 def valid_card_ids() -> tuple[int, ...]:
     """All valid card IDs (used to fill determinized hidden-info arrays)."""
     return tuple(int(c.cardId) for c in _all_cards())

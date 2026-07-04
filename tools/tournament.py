@@ -84,16 +84,16 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--games", type=int, default=20, help="number of games")
     parser.add_argument(
         "--opponent",
-        choices=["random", "heuristic"],
+        choices=["random", "heuristic", "legacy"],
         default="random",
-        help="baseline: random selector, or the search-free heuristic agent",
+        help="baseline: random, the search-free agent (A/B search), or the v2 legacy agent (A/B policy)",
     )
     args = parser.parse_args(argv)
 
     game = _import_game()
     from deckbuilder import build_deck
     from ptcg_bot.cards import load_pool
-    from ptcg_bot.main import agent, search_agent
+    from ptcg_bot.main import agent, legacy_agent, search_agent
 
     deck = [cid for cid, n in build_deck(load_pool()).counts for _ in range(n)]
 
@@ -110,19 +110,24 @@ def main(argv: list[str] | None = None) -> None:
             draws += result == 2
         subject, label = "shipped agent", "random"
     else:
-        # A/B the EXPERIMENTAL search_agent vs the shipped heuristic; alternate
-        # sides to cancel first-player advantage and count the search agent.
+        # A/B a challenger vs a baseline, alternating sides to cancel
+        # first-player advantage; count the challenger.
+        if args.opponent == "heuristic":
+            challenger, baseline = search_agent, agent
+            subject, label = "search_agent", "heuristic (search-free)"
+        else:
+            challenger, baseline = agent, legacy_agent
+            subject, label = "shipped agent (v3)", "legacy (v2)"
         for i in range(args.games):
             if i % 2 == 0:
-                result = play_game(game, deck, list(deck), search_agent, agent)
-                outcome = result  # search is P0
+                result = play_game(game, deck, list(deck), challenger, baseline)
+                outcome = result  # challenger is P0
             else:
-                result = play_game(game, deck, list(deck), agent, search_agent)
-                outcome = 1 - result if result in (0, 1) else result  # search is P1
+                result = play_game(game, deck, list(deck), baseline, challenger)
+                outcome = 1 - result if result in (0, 1) else result  # challenger is P1
             wins += outcome == 0
             losses += outcome == 1
             draws += outcome == 2
-        subject, label = "search_agent", "heuristic (search-free)"
 
     decided = wins + losses
     win_rate = (wins / decided * 100.0) if decided else 0.0

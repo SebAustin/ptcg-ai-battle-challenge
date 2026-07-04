@@ -133,3 +133,25 @@ simulator / competition page resolves the open items.
     all ~equal, **no candidate robustly beats the default, and the default deck is kept.**
     The tuner is the tool for future deck search but needs large samples; its own verdict now
     warns about small-sample noise and asks to confirm any leader with a large `--games` run.
+
+# Assumptions — Live-ladder diagnosis + v3 card-aware policy
+
+18. **Live Kaggle diagnosis (2026-07-04): the agent runs clean but was too weak for the
+    ladder.** Submission 54243849 (v2, 2026-07-01) scored **192.7** vs a 1224.9 leader. Episode
+    evidence (replays via the Kaggle CLI): every episode COMPLETED, all agent statuses DONE —
+    **no errors or timeouts** — and ~46% win-rate (6W/7L sampled) in its low-rating bracket.
+    Replay inspection showed the v2 agent answered almost every non-MAIN prompt with option
+    `[0]` (first option) while opponents made deliberate choices. Diagnosis: placement losses
+    against mid-tier agents sank the rating; "first option everywhere" is the biggest gap.
+
+19. **v3 card-aware policy (shipped).** MAIN: prefer the *cheapest lethal* attack (damage >=
+    opponent Active's remaining HP) over raw max damage; energy/evolution target the Active.
+    Card selections resolve each option's `area/index` against the observation and rank by the
+    card behind it (engine metadata `card_power`): strongest for setup/switch/promote/fetch
+    contexts, weakest for discard/to-deck/to-prize. Offline (no `cg`) everything degrades to
+    the legacy first-option behavior; never-crash preserved. Measured: **53.3%** vs the v2
+    `legacy_agent` (60-game mirror A/B, sides alternated) and 100% vs random; bundled runtime
+    verified standalone (card_power loads, full legal games). Mirror A/Bs understate
+    fundamentals vs *different* decks, but per our own discipline we do not promise a specific
+    rating gain. Note: each Kaggle submission is rated separately, so resubmitting also gets a
+    fresh placement rather than the 192-anchored rating.
