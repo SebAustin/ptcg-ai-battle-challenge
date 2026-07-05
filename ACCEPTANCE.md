@@ -17,7 +17,7 @@ reproduce any row.
 | Agent beats a random baseline | PASS (vs random only) | `tools/tournament.py` self-play harness: develop-first policy lost decisively (representative run 20.8%); attack-first ordering flips it to consistently winning (representative run 24/24). The engine RNG is un-seeded so figures vary run-to-run (attack-first ≈75–100% vs random). Not yet measured against a non-random competent opponent. |
 | Submission bundle is self-contained | PASS | `tools/bundle.py` copies the runtime-only module closure into `dist/submission/`, then re-imports it in a subprocess with the repo off `sys.path` (`_self_check()`); `tests/test_bundle.py` asserts `deckbuilder/` is excluded and no `__pycache__` remains (integration, needs `engine/` + `data/`). |
 | No network/subprocess egress in the shipped agent | PASS | `make audit` greps `ptcg_bot/` for `socket`/`urllib`/`requests`/`subprocess` imports and fails the build on a match; documented in `SECURITY.md`'s import audit section. |
-| Test suite coverage of shipped modules | PASS | 60 pytest test items across 6 files under `tests/` (56 `def test_*` functions, one of which is `@pytest.mark.parametrize`d with 5 cases, so pytest collects 60 total); integration tests skip cleanly without `data/`/`engine/`. |
+| Test suite coverage of shipped modules | PASS | 69 pytest test items across 6 files under `tests/` (56 `def test_*` functions, one of which is `@pytest.mark.parametrize`d with 5 cases, so pytest collects 60 total); integration tests skip cleanly without `data/`/`engine/`. |
 | IS-MCTS search / belief sampling | BUILT (experimental, not shipped) | `ptcg_bot/search.py` + `belief.py` implement one-ply determinized lookahead over the engine's search API, exposed as `main.search_agent`. Measured WORSE than the heuristic (≈15–45% vs it), so `main.agent` stays the heuristic. Multi-world PIMC + `legal.py` remain deferred. See ASSUMPTIONS.md item 15. |
 | Heuristic weight tuning against real win-rate | DEFERRED | `tools/tune.py` is referenced by the `make tune` target but does not exist yet (`Makefile`: `test -f tools/tune.py && ... || echo "[pending]"`); weights in `ptcg_bot/config.py` are hand-set defaults, not tuned. |
 | Robustness soak testing | DEFERRED | `tools/soak.py` is referenced by `make soak` but does not exist yet (same guarded pattern as `tune`); `config.TURN_DEADLINE_S` (2.5s) is defined but unenforced by a timer today since there is no search loop to bound. |
@@ -50,7 +50,7 @@ reproduce any row.
   `tournament.py` (self-play win-rate), `bundle.py` (submission packaging),
   `build_deck.py` (writes `dist/deck.csv`).
 - **Quality/CI/security gate** — `make ci` (lint + typecheck + audit + security + test),
-  `.github/workflows/ci.yml`, 60 pytest tests, `SECURITY.md` STRIDE-lite review.
+  `.github/workflows/ci.yml`, 69 pytest tests, `SECURITY.md` STRIDE-lite review.
 
 ## Deferred
 
