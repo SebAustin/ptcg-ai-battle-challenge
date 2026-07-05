@@ -75,6 +75,38 @@ def card_power() -> dict[int, tuple[int, int]]:
 
 
 @cache
+def attack_cost() -> dict[int, int]:
+    """Map ``cardId -> energy units its best (highest-damage) attack needs``.
+
+    Used to decide when a Pokémon is "charged" (attach elsewhere) and whether a
+    bench Pokémon is a ready attacker (retreat logic). ``{}`` offline.
+    """
+    try:
+        from cg.api import all_attack
+    except Exception:
+        return {}
+    try:
+        per_attack = {
+            int(a.attackId): (
+                int(getattr(a, "damage", 0) or 0),
+                len(getattr(a, "energies", None) or ()),
+            )
+            for a in all_attack()
+        }
+        table: dict[int, int] = {}
+        for c in _all_cards():
+            best_damage, best_cost = 0, 0
+            for aid in getattr(c, "attacks", None) or ():
+                dmg, cost = per_attack.get(int(aid), (0, 0))
+                if dmg > best_damage:
+                    best_damage, best_cost = dmg, cost
+            table[int(c.cardId)] = best_cost
+        return table
+    except Exception:
+        return {}
+
+
+@cache
 def valid_card_ids() -> tuple[int, ...]:
     """All valid card IDs (used to fill determinized hidden-info arrays)."""
     return tuple(int(c.cardId) for c in _all_cards())

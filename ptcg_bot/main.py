@@ -37,6 +37,7 @@ _ABILITY = 10
 _PLAY = 7
 _ATTACH = 8
 _EVOLVE = 9
+_RETREAT = 12
 _ATTACK = 13
 _END = 14
 
@@ -115,6 +116,24 @@ def _best_attack(options: list[dict[str, Any]], opp_hp: int = 0) -> int | None:
     return max(attacks, key=_dmg)
 
 
+def _my_pokemon(obs: dict[str, Any], zone: str) -> list[dict[str, Any]]:
+    """Our board Pokémon dicts for ``zone`` ('active' or 'bench'); [] on any gap."""
+    try:
+        current = obs.get("current") or {}
+        me = int(current.get("yourIndex") or 0)
+        return [p for p in ((current.get("players") or [])[me].get(zone) or []) if p]
+    except Exception:
+        return []
+
+
+def _is_charged(pokemon: dict[str, Any]) -> bool:
+    """True when a Pokémon has at least the energy its best attack needs."""
+    cost = metadata.attack_cost().get(int(pokemon.get("id") or 0))
+    if cost is None:
+        return False
+    return len(pokemon.get("energies") or ()) >= cost
+
+
 def _prefer_active_target(options: list[dict[str, Any]], otype: int) -> int | None:
     """First option of ``otype`` targeting the ACTIVE Pokémon, else the first."""
     indices = [i for i, o in enumerate(options) if o.get("type") == otype]
@@ -126,26 +145,79 @@ def _prefer_active_target(options: list[dict[str, Any]], otype: int) -> int | No
     return indices[0]
 
 
+def _attach_target(obs: dict[str, Any], options: list[dict[str, Any]]) -> int | None:
+    """ATTACH option to take: charge the Active first; once it is charged, feed
+    the strongest un-charged bench Pokémon (builds the next attacker instead of
+    overcharging). Falls back to the Active-first rule without metadata."""
+    indices = [i for i, o in enumerate(options) if o.get("type") == _ATTACH]
+    if not indices:
+        return None
+
+    def _bench_pick() -> int | None:
+        active = _my_pokemon(obs, "active")
+        power = metadata.card_power()
+        if not power or not active or not _is_charged(active[0]):
+            return None
+        bench = _my_pokemon(obs, "bench")
+
+        def _bench_value(i: int) -> tuple[int, int, int]:
+            option = options[i]
+            if option.get("inPlayArea") != _AREA_BENCH:
+                return (-1, 0, 0)  # non-bench targets last
+            pokemon = bench[int(option.get("inPlayIndex") or 0)]
+            dmg, hp = power.get(int(pokemon.get("id") or 0), (0, 0))
+            return (0 if _is_charged(pokemon) else 1, dmg, hp)  # un-charged first
+
+        best = max(indices, key=_bench_value)
+        return best if _bench_value(best) > (-1, 0, 0) else None
+
+    try:
+        picked = _bench_pick()
+    except Exception:
+        picked = None  # any resolution gap -> the safe Active-first rule
+    return picked if picked is not None else _prefer_active_target(options, _ATTACH)
+
+
+def _should_retreat(obs: dict[str, Any]) -> bool:
+    """Retreat only when the Active cannot attack but a bench Pokémon is a
+    ready (charged) attacker — the 'stuck wall' the ladder punishes."""
+    try:
+        active = _my_pokemon(obs, "active")
+        if not metadata.attack_cost() or not active or _is_charged(active[0]):
+            return False
+        return any(_is_charged(p) for p in _my_pokemon(obs, "bench"))
+    except Exception:
+        return False
+
+
 def _choose_main(
     obs: dict[str, Any], options: list[dict[str, Any]]
 ) -> list[int] | None:
-    """Attack when able (lethal first), else develop, else end.
+    """Attack when able (lethal first), else develop, else retreat a stuck
+    wall, else end.
 
-    Development targets the Active where the option says which Pokémon it
-    touches (energy attachment, evolution). Returns ``None`` when the prompt has
-    no MAIN-type option (so the caller falls back to the generic selector).
+    Development charges the Active first, then feeds the strongest bench
+    attacker; evolution targets the Active. Retreat fires only when the Active
+    cannot attack but a charged attacker waits on the bench (the promotion that
+    follows is the ranked SWITCH selection). Returns ``None`` when the prompt
+    has no MAIN-type option (so the caller falls back to the generic selector).
     """
     attack = _best_attack(options, _opp_active_hp(obs))
     if attack is not None:
         return [attack]
     for otype in _DEVELOP_PRIORITY:
-        index = (
-            _prefer_active_target(options, otype)
-            if otype in (_ATTACH, _EVOLVE)
-            else _first_of_type(options, otype)
-        )
+        if otype == _ATTACH:
+            index = _attach_target(obs, options)
+        elif otype == _EVOLVE:
+            index = _prefer_active_target(options, otype)
+        else:
+            index = _first_of_type(options, otype)
         if index is not None:
             return [index]
+    if (retreat := _first_of_type(options, _RETREAT)) is not None and _should_retreat(
+        obs
+    ):
+        return [retreat]
     return None if (end := _first_of_type(options, _END)) is None else [end]
 
 

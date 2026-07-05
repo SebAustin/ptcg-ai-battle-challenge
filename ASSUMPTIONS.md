@@ -155,3 +155,13 @@ simulator / competition page resolves the open items.
     fundamentals vs *different* decks, but per our own discipline we do not promise a specific
     rating gain. Note: each Kaggle submission is rated separately, so resubmitting also gets a
     fresh placement rather than the 192-anchored rating.
+
+20. **v4: charge-then-feed energy + gated retreat (shipped).** Two mirror-blind fundamentals:
+    (a) once the Active has the energy its best attack needs (`metadata.attack_cost`), energy
+    goes to the strongest un-charged bench Pokémon (builds the next attacker instead of
+    overcharging); (b) retreat fires only when the Active cannot attack but a charged attacker
+    waits on the bench (the ranked SWITCH pick then promotes it). Measured: 52.8% aggregate vs
+    v2 over 180 mirror games (statistically level with v3's 54.4% — mirror A/Bs cannot see
+    retreat, which fired ~0.1x/game there) and 100% vs random; offline both features disable
+    (no metadata -> legacy behavior); never-crash preserved. Shipped on not-worse evidence +
+    strategic rationale; no specific rating gain promised.

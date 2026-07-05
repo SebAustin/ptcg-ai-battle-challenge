@@ -126,3 +126,58 @@ def test_agent_plays_a_full_legal_game():
         ), f"game did not resolve (result={result}, steps={steps})"
     finally:
         game.battle_finish()
+
+
+# --- v4: smart attach + gated retreat (synthetic, metadata monkeypatched) ----
+
+
+def _v4_obs(active_energy: int, bench_energy: int) -> dict:
+    return {
+        "current": {
+            "yourIndex": 0,
+            "players": [
+                {
+                    "active": [{"id": 100, "energies": [3] * active_energy}],
+                    "bench": [{"id": 101, "energies": [3] * bench_energy}],
+                },
+                {"active": [{"id": 200, "hp": 90}], "bench": []},
+            ],
+        }
+    }
+
+
+@pytest.mark.unit
+def test_should_retreat_only_when_wall_stuck_and_bench_ready(monkeypatch):
+    from ptcg_bot import main as m
+    from ptcg_bot import metadata
+
+    monkeypatch.setattr(metadata, "attack_cost", lambda: {100: 2, 101: 1})
+    assert m._should_retreat(_v4_obs(active_energy=0, bench_energy=1))  # stuck + ready
+    assert not m._should_retreat(_v4_obs(active_energy=2, bench_energy=1))  # active ok
+    assert not m._should_retreat(_v4_obs(active_energy=0, bench_energy=0))  # no rescuer
+
+
+@pytest.mark.unit
+def test_should_retreat_false_without_metadata(monkeypatch):
+    from ptcg_bot import main as m
+    from ptcg_bot import metadata
+
+    monkeypatch.setattr(metadata, "attack_cost", lambda: {})
+    assert not m._should_retreat(_v4_obs(0, 1))  # offline -> never retreat
+
+
+@pytest.mark.unit
+def test_attach_feeds_bench_once_active_charged(monkeypatch):
+    from ptcg_bot import main as m
+    from ptcg_bot import metadata
+
+    monkeypatch.setattr(metadata, "attack_cost", lambda: {100: 1, 101: 2})
+    monkeypatch.setattr(metadata, "card_power", lambda: {100: (50, 60), 101: (80, 70)})
+    options = [
+        {"type": 8, "inPlayArea": 4, "inPlayIndex": 0},  # attach to active
+        {"type": 8, "inPlayArea": 5, "inPlayIndex": 0},  # attach to bench
+    ]
+    charged = _v4_obs(active_energy=1, bench_energy=0)
+    assert m._attach_target(charged, options) == 1  # active charged -> feed bench
+    hungry = _v4_obs(active_energy=0, bench_energy=0)
+    assert m._attach_target(hungry, options) == 0  # active first while uncharged
