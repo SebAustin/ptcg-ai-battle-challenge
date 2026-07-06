@@ -349,26 +349,13 @@ def _fallback(obs_dict: dict[str, Any]) -> list[int]:
 
 
 def agent(obs_dict: dict[str, Any]) -> list[int]:
-    """Engine entrypoint — the SHIPPED policy: attack-first heuristic (100% vs
-    random). Never raises: a bad/raised selection would forfeit the game.
+    """Engine entrypoint — the SHIPPED policy: determinized rollout-PIMC search
+    with the LEARNED win-probability leaf (``eval_weights``), falling back to
+    the card-aware heuristic for non-MAIN prompts, offline, or on any error.
+    Never raises: a bad/raised selection would forfeit the game.
 
-    A determinized rollout-PIMC search (:func:`search_agent`) exists and reaches
-    ~parity with this heuristic (measured by ``tools/tournament --opponent
-    heuristic``) but not a decisive win, so the heuristic stays the default. See
-    ASSUMPTIONS.md.
-    """
-    try:
-        if engine_adapter.is_deck_request(obs_dict):
-            return _read_deck()
-        return _heuristic_selection(obs_dict)
-    except Exception:
-        return _fallback(obs_dict)
-
-
-def search_agent(obs_dict: dict[str, Any]) -> list[int]:
-    """EXPERIMENTAL entrypoint: one-ply determinized lookahead (:mod:`ptcg_bot.search`)
-    with a heuristic fallback. Not yet stronger than :func:`agent` — retained for
-    the in-progress IS-MCTS work and A/B'd by ``tools/tournament``.
+    Promoted over the heuristic on a pooled 78.5% win-rate across 200 mirror
+    games (5x40, sides alternated; every run >= 65%) — see ASSUMPTIONS.md §21.
     """
     try:
         if engine_adapter.is_deck_request(obs_dict):
@@ -377,3 +364,18 @@ def search_agent(obs_dict: dict[str, Any]) -> list[int]:
         return searched if searched is not None else _heuristic_selection(obs_dict)
     except Exception:
         return _fallback(obs_dict)
+
+
+def heuristic_agent(obs_dict: dict[str, Any]) -> list[int]:
+    """The previous shipped policy (v4 card-aware heuristic, search-free) —
+    kept as the A/B baseline for ``tools/tournament --opponent heuristic``."""
+    try:
+        if engine_adapter.is_deck_request(obs_dict):
+            return _read_deck()
+        return _heuristic_selection(obs_dict)
+    except Exception:
+        return _fallback(obs_dict)
+
+
+# Alias kept for backward compatibility (tests/tools referenced search_agent).
+search_agent = agent

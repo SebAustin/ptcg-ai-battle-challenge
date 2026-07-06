@@ -38,3 +38,6 @@ engine/
 .remember/
 .claude/
 .cursor/
+
+# Self-play training data (regenerate with tools/selfplay.py)
+data/selfplay/

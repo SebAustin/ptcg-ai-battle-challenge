@@ -20,21 +20,24 @@ best option found so far, or ``None`` to fall back to the heuristic.
 from __future__ import annotations
 
 import contextlib
+import math
 import random
 import time
 from typing import Any
 
 from . import belief
 from . import config as cfg
+from . import features
 
 _MAX_OPTIONS = 12
 _SELECT_TYPE_MAIN = 0
 
 # Worlds/rollout-depth come from config (env-tunable via PTCG_SEARCH_WORLDS /
 # PTCG_SEARCH_ROLLOUT_DEPTH). The real cap is the wall-clock deadline below, so
-# these can be set high — the search does as many rollouts as fit the turn budget.
+# these can be set high. Depth 0 = direct 1-ply: evaluate the post-option
+# observation immediately (more worlds per deadline; no rollout-policy bias).
 _WORLDS = max(1, cfg.SEARCH_WORLDS)
-_DEPTH = max(1, cfg.SEARCH_ROLLOUT_DEPTH)
+_DEPTH = max(0, cfg.SEARCH_ROLLOUT_DEPTH)
 
 # OptionType ids (engine cg/api.py). Rollout base policy = attack-first.
 _ATTACK = 13
@@ -42,21 +45,46 @@ _END = 14
 _DEVELOP = (10, 8, 9, 7)  # ability, attach, evolve, play
 
 
+def _learned_value(observation: Any, me: int) -> float | None:
+    """Win probability from the trained evaluator, or ``None`` to fall back."""
+    if not cfg.LEARNED_EVAL:
+        return None
+    try:
+        from . import eval_weights  # noqa: PLC0415 - optional generated module
+
+        feats = features.extract(observation, me)
+        if len(feats) != eval_weights.FEATURE_COUNT:
+            return None  # features/weights version skew -> heuristic fallback
+        return eval_weights.predict(feats)
+    except Exception:
+        return None
+
+
 def evaluate_observation(observation: Any, me: int) -> float:
-    """Positional value of an ``Observation`` from player ``me``'s perspective."""
+    """Value of an ``Observation`` for player ``me`` on a WIN-PROBABILITY scale.
+
+    Terminal states are exact (1.0 win / 0.0 loss / 0.5 draw). Non-terminal
+    states use the learned evaluator (``eval_weights.predict`` over
+    ``features.extract``); without it, the legacy hand-crafted positional score
+    squashed through a sigmoid keeps both paths on the same scale.
+    """
     current = getattr(observation, "current", None)
     if current is None:
-        return 0.0
+        return 0.5
 
     result = getattr(current, "result", -1)
     if result != -1:
         if result == me:
-            return cfg.VALUE_WIN
-        return 0.0 if result == 2 else cfg.VALUE_LOSS
+            return 1.0
+        return 0.5 if result == 2 else 0.0
+
+    learned = _learned_value(observation, me)
+    if learned is not None:
+        return learned
 
     players = getattr(current, "players", None) or []
     if len(players) < 2:
-        return 0.0
+        return 0.5
     us, them = players[me], players[1 - me]
 
     def _hp(pokemon: Any) -> int:
@@ -85,7 +113,8 @@ def evaluate_observation(observation: Any, me: int) -> float:
     )
     score += board_energy * cfg.W_ENERGY_ON_BOARD
     score += int(getattr(us, "handCount", 0) or 0) * cfg.W_HAND_SIZE
-    return score
+    # Same scale as the learned path: squash the positional score to (0, 1).
+    return 1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, score / 300.0))))
 
 
 def _rollout_choice(observation: Any) -> list[int]:

@@ -53,7 +53,8 @@ VALUE_LOSS = _f("VALUE_LOSS", -1.0e6)
 # --- Search parameters (search.py — determinized IS-MCTS) -------------------
 SEARCH_WORLDS = _i("SEARCH_WORLDS", 12)  # K sampled hidden-state worlds
 SEARCH_ITERS_PER_WORLD = _i("SEARCH_ITERS_PER_WORLD", 200)
-SEARCH_ROLLOUT_DEPTH = _i("SEARCH_ROLLOUT_DEPTH", 8)
+SEARCH_ROLLOUT_DEPTH = _i("SEARCH_ROLLOUT_DEPTH", 8)  # 0 = direct 1-ply leaf eval
+LEARNED_EVAL = _i("LEARNED_EVAL", 1)  # 1 = learned leaf (eval_weights), 0 = heuristic
 UCT_C = _f("UCT_C", 1.4)  # exploration constant
 
 # --- Time budget (main.py guard) --------------------------------------------

@@ -165,3 +165,23 @@ simulator / competition page resolves the open items.
     retreat, which fired ~0.1x/game there) and 100% vs random; offline both features disable
     (no metadata -> legacy behavior); never-crash preserved. Shipped on not-worse evidence +
     strategic rationale; no specific rating gain promised.
+
+# Assumptions — Learned evaluator (gen0) pass
+
+21. **Learned win-probability evaluator: the first DECISIVE win — search is now the shipped
+    agent.** Pipeline: `tools/selfplay.py` generated 30k games (~1.78M MAIN-decision positions;
+    pilot mix 50% mirror / 35% eps-heuristic / 15% random; 30% opponent-deck variants);
+    `tools/train_eval.py` (numpy, dev-only) trained LR + a 32-unit tanh MLP — MLP won (val
+    logloss 0.458 vs 0.693 base, AUC 0.867, near-diagonal calibration) — and exported
+    `ptcg_bot/eval_weights.py` (pure-stdlib literals, ~1.3k weights). `search.py`'s leaf is now
+    win-probability-scaled: terminal 1/0/0.5, else `eval_weights.predict(features.extract(obs,
+    me))` (FEATURE_COUNT skew guard; offline falls back to the sigmoid-squashed heuristic).
+    `ptcg_bot/features.py` (41 public-info features, dict+dataclass tolerant) is shared by
+    training and inference. Screens: depth-0 45%, depth-8 70% — the rollout resolves tactics,
+    the model values the outcome. **Promotion gate: pooled 78.5% over 200 mirror games (5x40:
+    82.5/85/65/72.5/87.5, sides alternated) vs the v4 heuristic — every run >= 65%.** Worst
+    decision 0.15s vs the 2.5s budget. `agent` = search+learned (heuristic fallback for
+    non-MAIN/offline/error paths; never-crash preserved); the old policy ships as
+    `heuristic_agent` for A/B. Ladder rating gain still not promised — but this is the first
+    change that decisively beat its predecessor under the house gate. Next: gen1 self-play with
+    the promoted pilot.

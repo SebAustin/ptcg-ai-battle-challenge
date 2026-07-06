@@ -46,8 +46,6 @@ def test_evaluate_observation_prefers_prize_lead():
 
 @pytest.mark.unit
 def test_evaluate_terminal_win_loss():
-    from ptcg_bot import config as cfg
-
     win = SimpleNamespace(
         current=SimpleNamespace(
             yourIndex=0, result=0, players=[_player(1, 100), _player(1, 100)]
@@ -58,9 +56,30 @@ def test_evaluate_terminal_win_loss():
             yourIndex=0, result=1, players=[_player(1, 100), _player(1, 100)]
         )
     )
-    # Evaluated from player 0's fixed perspective.
-    assert search.evaluate_observation(win, 0) == cfg.VALUE_WIN
-    assert search.evaluate_observation(loss, 0) == cfg.VALUE_LOSS
+    draw = SimpleNamespace(
+        current=SimpleNamespace(
+            yourIndex=0, result=2, players=[_player(1, 100), _player(1, 100)]
+        )
+    )
+    # Win-probability scale, from player 0's fixed perspective.
+    assert search.evaluate_observation(win, 0) == 1.0
+    assert search.evaluate_observation(loss, 0) == 0.0
+    assert search.evaluate_observation(draw, 0) == 0.5
+
+
+@pytest.mark.unit
+def test_learned_leaf_used_and_guarded(monkeypatch):
+    from ptcg_bot import eval_weights, features
+
+    obs = _obs(me_prize=2, them_prize=5)
+    # Learned path: a valid-length vector goes through eval_weights.predict.
+    value = search.evaluate_observation(obs, 0)
+    assert 0.0 < value < 1.0
+    # Version-skew guard: FEATURE_COUNT mismatch -> heuristic fallback, no raise.
+    monkeypatch.setattr(features, "extract", lambda o, m: [0.0])
+    fallback = search.evaluate_observation(obs, 0)
+    assert 0.0 < fallback < 1.0
+    assert eval_weights.FEATURE_COUNT != 1
 
 
 @pytest.mark.unit

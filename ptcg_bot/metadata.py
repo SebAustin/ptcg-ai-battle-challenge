@@ -75,6 +75,26 @@ def card_power() -> dict[int, tuple[int, int]]:
 
 
 @cache
+def type_info() -> dict[int, tuple[int, int]]:
+    """Map ``cardId -> (energyType id, weakness id or -1)`` for matchup features.
+
+    ``{}`` offline (no ``cg``); callers treat missing entries as "unknown".
+    """
+    table: dict[int, tuple[int, int]] = {}
+    try:
+        for c in _all_cards():
+            etype = getattr(c, "energyType", None)
+            weak = getattr(c, "weakness", None)
+            table[int(c.cardId)] = (
+                int(etype) if etype is not None else -1,
+                int(weak) if weak is not None else -1,
+            )
+    except Exception:
+        return {}
+    return table
+
+
+@cache
 def attack_cost() -> dict[int, int]:
     """Map ``cardId -> energy units its best (highest-damage) attack needs``.
 

@@ -36,6 +36,8 @@ _RUNTIME_MODULES = (
     "main.py",
     "search.py",
     "belief.py",
+    "features.py",
+    "eval_weights.py",
     "metadata.py",
     "engine_adapter.py",
     "state.py",

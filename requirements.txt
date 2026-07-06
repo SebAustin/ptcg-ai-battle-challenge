@@ -38,3 +38,7 @@ pip-audit>=2.7,<3
 # requires accepting that competition's rules (see ASSUMPTIONS.md / SUBMIT.md).
 # Once downloaded, implement ptcg_bot/engine_adapter.py against cg/api.py and
 # wire tools/verify_env.py to assert round-trip fidelity (plan §W2).
+
+# Offline training of the learned evaluator (tools/train_eval.py). Dev-only —
+# the shipped agent infers with pure stdlib (ptcg_bot/eval_weights.py literals).
+numpy>=1.26,<3

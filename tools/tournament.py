@@ -93,7 +93,7 @@ def main(argv: list[str] | None = None) -> None:
     game = _import_game()
     from deckbuilder import build_deck
     from ptcg_bot.cards import load_pool
-    from ptcg_bot.main import agent, legacy_agent, search_agent
+    from ptcg_bot.main import agent, heuristic_agent, legacy_agent
 
     deck = [cid for cid, n in build_deck(load_pool()).counts for _ in range(n)]
 
@@ -113,11 +113,11 @@ def main(argv: list[str] | None = None) -> None:
         # A/B a challenger vs a baseline, alternating sides to cancel
         # first-player advantage; count the challenger.
         if args.opponent == "heuristic":
-            challenger, baseline = search_agent, agent
-            subject, label = "search_agent", "heuristic (search-free)"
+            challenger, baseline = agent, heuristic_agent
+            subject, label = "shipped agent (search+learned)", "heuristic (search-free)"
         else:
             challenger, baseline = agent, legacy_agent
-            subject, label = "shipped agent (v3)", "legacy (v2)"
+            subject, label = "shipped agent", "legacy (v2)"
         for i in range(args.games):
             if i % 2 == 0:
                 result = play_game(game, deck, list(deck), challenger, baseline)
