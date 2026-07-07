@@ -26,7 +26,10 @@ def test_bundle_produces_self_contained_submission():
 
     from tools import bundle
 
-    bundle.main()  # runs the subprocess self-check; raises SystemExit if not standalone
+    # Explicit empty argv (bare main() would parse pytest's own sys.argv).
+    bundle.main(
+        []
+    )  # runs the subprocess self-check; raises SystemExit if not standalone
 
     sub = _ROOT / "dist" / "submission"
     assert (sub / "main.py").exists()
