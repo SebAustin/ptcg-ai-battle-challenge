@@ -185,3 +185,17 @@ simulator / competition page resolves the open items.
     `heuristic_agent` for A/B. Ladder rating gain still not promised — but this is the first
     change that decisively beat its predecessor under the house gate. Next: gen1 self-play with
     the promoted pilot.
+
+22. **Gen1 self-play iteration: honest plateau — gen0 weights kept.** Gen1 data = 12k games
+    with the promoted search pilot at reduced budget (`PTCG_SEARCH_WORLDS=4`,
+    `PTCG_TURN_DEADLINE_S=0.5`) mixed with ~20% gen0 heuristic-pilot shards (961k + ~450k
+    rows; `--id-offset` added to selfplay to avoid game-id collisions across generations).
+    Gen1 MLP: val logloss 0.507, AUC 0.831 on the harder search-pilot distribution
+    (not comparable to gen0's raw 0.458/0.867). **Gate (mechanical, pre-registered): ship at
+    pooled >= 80% vs heuristic_agent over 200 games. Result: 70/77.5/80/65/67.5 -> pooled
+    72.0% — below the bar and below gen0's 77.3% band.** Reverted to gen0 weights
+    (`git checkout`), confirmed GEN=gen0 + sanity A/B 72.5%. Interpretation: one generation of
+    naive self-play iteration did not improve this evaluator (distribution shift without
+    stronger supervision); the shipped v5 remains gen0. Future gens should change something
+    structural (deeper features, more data from *mixed* strength pilots, or tree reuse)
+    rather than re-running the same loop.

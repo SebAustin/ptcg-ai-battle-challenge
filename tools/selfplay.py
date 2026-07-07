@@ -48,9 +48,9 @@ def epsilon_policy(base: Policy, eps: float, rng: random.Random) -> Policy:
     return choose
 
 
-def _worker(args: tuple[int, int, str]) -> str:
+def _worker(args: tuple[int, int, str, int]) -> str:
     """Play ``n_games`` and write one CSV shard; returns the shard path."""
-    worker_id, n_games, out_dir = args
+    worker_id, n_games, out_dir, id_offset = args
     sys.path.insert(0, str(_ENGINE))
     from cg import game  # noqa: PLC0415
 
@@ -86,7 +86,7 @@ def _worker(args: tuple[int, int, str]) -> str:
         writer = csv.writer(fh)
         writer.writerow(["game_id", "label", *FEATURE_NAMES])
         for i in range(n_games):
-            game_id = worker_id * 10_000_000 + i
+            game_id = id_offset + worker_id * 10_000_000 + i
             # Pilot mix: 50% mirror, 35% vs eps-heuristic, 15% vs random.
             roll = rng.random()
             if roll < 0.50:
@@ -143,13 +143,19 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--games", type=int, default=2000, help="total games")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--out", default="data/selfplay/gen0")
+    parser.add_argument(
+        "--id-offset",
+        type=int,
+        default=0,
+        help="added to every game_id (avoids collisions when combining generations)",
+    )
     args = parser.parse_args(argv)
 
     if not (_ENGINE / "cg" / "api.py").exists():
         raise SystemExit("engine not found — run `make engine` first")
 
     per_worker = max(1, args.games // args.workers)
-    jobs = [(w, per_worker, args.out) for w in range(args.workers)]
+    jobs = [(w, per_worker, args.out, args.id_offset) for w in range(args.workers)]
     if args.workers <= 1:
         shards = [_worker(jobs[0])]
     else:
