@@ -18,6 +18,7 @@ Run: ``make bundle`` (needs ``make engine`` and ``make data``).
 
 from __future__ import annotations
 
+import argparse
 import os
 import shutil
 import subprocess
@@ -82,11 +83,31 @@ def _self_check() -> None:
         )
 
 
-def main() -> None:
+def _read_deck_file(path: str) -> str:
+    """A pre-made deck.csv (60 integer lines) to ship instead of the builder's."""
+    ids = [
+        int(line)
+        for line in Path(path).read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    if len(ids) != 60:
+        raise SystemExit(f"--deck {path}: expected 60 card ids, got {len(ids)}")
+    return "\n".join(str(i) for i in ids) + "\n"
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="package the submission bundle")
+    parser.add_argument(
+        "--deck",
+        default=None,
+        help="optional path to a 60-line deck.csv to ship instead of the built deck",
+    )
+    args = parser.parse_args(argv)
+
     if not _CG_SRC.exists():
         raise SystemExit("engine cg/ not found at engine/ — run `make engine` first")
 
-    deck_csv = _build_deck_csv()
+    deck_csv = _read_deck_file(args.deck) if args.deck else _build_deck_csv()
 
     if _DIST.exists():
         shutil.rmtree(_DIST)

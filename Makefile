@@ -99,7 +99,7 @@ tune: ## Deck fitness tuning by self-play (rank×energy vs default; needs engine
 	$(PY) -m tools.tune $(ARGS)
 
 bundle: ## Package dist/submission/ (main.py + deck.csv + ptcg_bot + cg) + zip (needs engine+data)
-	$(PY) -m tools.bundle
+	$(PY) -m tools.bundle $(ARGS)
 
 check: test verify bundle ## Full local gate: tests + engine verify + bundle
 

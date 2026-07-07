@@ -199,3 +199,19 @@ simulator / competition page resolves the open items.
     stronger supervision); the shipped v5 remains gen0. Future gens should change something
     structural (deeper features, more data from *mixed* strength pilots, or tree reuse)
     rather than re-running the same loop.
+
+23. **Meta intelligence: the deck was the bottleneck — v6 ships a netdecked meta list.**
+    With v5 at ~300, loss forensics over 31 live replays showed we took the FIRST prize in all
+    22 losses and 12 were decided by <=1 prize: strong opening, losing close endgames — prize
+    economics, i.e. a deck problem. The replays include both players' decklists (step-1
+    actions), so we extracted the 22 real decks that beat us (`data/meta_decks.json`,
+    gitignored) and measured: EVERY deck our builder makes loses ~80% to that meta set (best
+    candidate 22.7%, shipped deck 20.5%) under our own strong pilot — the deck, not the agent,
+    was the ceiling. Round-robin of the 22 meta decks under our pilot crowned a **Marnie's
+    Grimmsnarl ex** list (71.4% RR), which scores **54.5% vs the meta set** (+34 points over
+    ours) and **80% head-to-head vs our deck**. v6 = same v5 agent + this deck
+    (`make bundle ARGS="--deck data/best_meta_deck.csv"`).
+    **Disclosure:** the decklist is netdecked from public replays of our own ladder games —
+    standard competitive practice; the Strategy writeup keeps OUR deckbuilder as the original
+    deck-construction contribution and will disclose that the Simulation entry runs an
+    observed meta list for win-rate. Deck data files stay gitignored (competition-derived).
