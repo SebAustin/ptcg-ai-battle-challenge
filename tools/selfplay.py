@@ -48,10 +48,12 @@ def epsilon_policy(base: Policy, eps: float, rng: random.Random) -> Policy:
     return choose
 
 
-def _worker(args: tuple[int, int, str, int]) -> str:
+def _worker(args: tuple[int, int, str, int, str | None]) -> str:
     """Play ``n_games`` and write one CSV shard; returns the shard path."""
-    worker_id, n_games, out_dir, id_offset = args
+    worker_id, n_games, out_dir, id_offset, meta_path = args
     sys.path.insert(0, str(_ENGINE))
+    import json  # noqa: PLC0415
+
     from cg import game  # noqa: PLC0415
 
     from deckbuilder import build_deck  # noqa: PLC0415
@@ -68,6 +70,12 @@ def _worker(args: tuple[int, int, str, int]) -> str:
             variant_decks.append([c for c, n in deck.counts for _ in range(n)])
         except Exception:
             continue
+
+    # Meta mode: sample BOTH sides' decks from real ladder decklists, so the
+    # training distribution matches the games the agent actually plays.
+    meta_decks: list[list[int]] = []
+    if meta_path:
+        meta_decks = json.loads(Path(meta_path).read_text(encoding="utf-8"))
 
     rng = random.Random(worker_id * 7919 + 13)
 
@@ -95,14 +103,19 @@ def _worker(args: tuple[int, int, str, int]) -> str:
                 opponent = epsilon_policy(agent, rng.choice((0.1, 0.25)), rng)
             else:
                 opponent = random_policy
-            opp_deck = (
-                rng.choice(variant_decks)
-                if (variant_decks and rng.random() < 0.3)
-                else our_deck
-            )
+            if meta_decks:
+                my_deck = rng.choice(meta_decks)
+                opp_deck = rng.choice(meta_decks)
+            else:
+                my_deck = our_deck
+                opp_deck = (
+                    rng.choice(variant_decks)
+                    if (variant_decks and rng.random() < 0.3)
+                    else our_deck
+                )
             we_start = i % 2 == 0
-            deck0 = list(our_deck) if we_start else list(opp_deck)
-            deck1 = list(opp_deck) if we_start else list(our_deck)
+            deck0 = list(my_deck) if we_start else list(opp_deck)
+            deck1 = list(opp_deck) if we_start else list(my_deck)
             p0: Policy = agent if we_start else opponent
             p1: Policy = opponent if we_start else agent
 
@@ -149,13 +162,21 @@ def main(argv: list[str] | None = None) -> None:
         default=0,
         help="added to every game_id (avoids collisions when combining generations)",
     )
+    parser.add_argument(
+        "--meta-decks",
+        default=None,
+        help="JSON file of real decklists; both sides sample from it (meta-vs-meta)",
+    )
     args = parser.parse_args(argv)
 
     if not (_ENGINE / "cg" / "api.py").exists():
         raise SystemExit("engine not found — run `make engine` first")
 
     per_worker = max(1, args.games // args.workers)
-    jobs = [(w, per_worker, args.out, args.id_offset) for w in range(args.workers)]
+    jobs = [
+        (w, per_worker, args.out, args.id_offset, args.meta_decks)
+        for w in range(args.workers)
+    ]
     if args.workers <= 1:
         shards = [_worker(jobs[0])]
     else:

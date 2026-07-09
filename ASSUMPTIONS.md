@@ -215,3 +215,17 @@ simulator / competition page resolves the open items.
     standard competitive practice; the Strategy writeup keeps OUR deckbuilder as the original
     deck-construction contribution and will disclose that the Simulation entry runs an
     observed meta list for win-rate. Deck data files stay gitignored (competition-derived).
+
+24. **Gen2 (meta-vs-meta training) + Dwebble/Crustle deck = v7 — both pre-registered gates
+    cleared.** Meta set refreshed from v6's bracket (22 -> 59 unique real decklists; v6
+    forensics: 16W/30L, first blood OURS in all 30 losses, 17 close — same endgame signature).
+    `selfplay --meta-decks` samples BOTH sides' decks from the real meta, so gen2 trained on
+    the distribution the agent actually faces (12k games + 20% gen0 mix; val 0.570/0.773 on
+    the much harder meta distribution). Gates: G1a vs 59-deck meta set — gen0 baseline 55.9%,
+    bar 63.9%, **gen2 pooled 64.8% over 236 games — PASS**; G1b vs heuristic — **76.3%**,
+    in gen0's band, no regression. G2 deck refresh under the gen2 pilot: screen found four 6-0
+    challengers vs Grimmsnarl; confirm round crowned **deck22 (Dwebble/Crustle)** at **90% H2H
+    (18-2)** and **78.0% vs the meta set (+13.2 over Grimmsnarl)** — both G2 conditions
+    cleared. v7 = gen2 weights + Dwebble/Crustle list (netdecked; same disclosure as §23).
+    make ci green (pipefail); bundle self-check; standalone 6/0. The flywheel (refresh meta ->
+    retrain -> re-gate -> re-deck) is now the documented, repeatable improvement loop.
