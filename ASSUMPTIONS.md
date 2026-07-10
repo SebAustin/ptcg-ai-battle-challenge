@@ -247,3 +247,27 @@ simulator / competition page resolves the open items.
     reduction (e.g. ship if losses-vs-meta drop >= 25%: 85.1% -> >= 88.8%). The next
     structural levers: features v2 (evolution-line potential, energy tempo, per-archetype
     opponent conditioning), search tree reuse across decisions, and mixed-strength pilots.
+
+26. **Flywheel turn 4: features v2 gated OUT at exactly zero gain — v7 stands.** The §25
+    structural lever, built and measured end-to-end: 20 new public-board features appended
+    to the 41 (evolution stage + headroom via `evolvesFrom`, KO prize liability ex=2/megaEx=3
+    — aimed at the persistent "first blood ours, lose close" signature — energy-tempo
+    deficits, retreat cost, discard composition), new lazy `cg` metadata maps, 12k
+    meta-vs-meta self-play games (945k rows, 61 features) and a gen4 MLP (val logloss
+    0.5742, AUC 0.785, well calibrated). Measurement moved to a COMMITTED harness,
+    `tools/pilot_gate.py` (turn 3 used a scratch script since lost): our deck vs every meta
+    deck, same pilot both sides, 2 games/deck, PTCG_TURN_DEADLINE_S=0.5. Same-day v7
+    baseline on this harness: **165W/38L = 81.3%/203** (recorded turn-3 number was 85.1%,
+    ~1.4 SE apart — harness/noise; the bar was re-anchored per the §25 relative rule BEFORE
+    training: 25% loss reduction = **86.0%**). Gen4 G1a: batch1 83.7%/203 (inside the +/-3
+    band -> one pre-authorized extra batch), batch2 78.8%/203 — **pooled 330W/76L =
+    81.3%/406 — identical to baseline; FAIL, reverted**. Honest caveats logged: (i) the
+    self-play pilot ran with the learned leaf skew-guarded off (41-dim gen2 weights vs
+    61-dim features), i.e. a heuristic-leaf bootstrap — same class as gen0, which DID ship,
+    so bootstrap alone doesn't explain zero effect; (ii) better calibration did not
+    translate into better play — the search's decisions are evidently not bottlenecked on
+    the leaf's knowledge of prize liability/tempo at 4-world/0.5s budgets. Work preserved on
+    branch `wip/features-v2-gen4` (a gen5 two-stage retrain — pilot USING gen4 weights —
+    stays a candidate for when the meta distribution next changes). Remaining §25 levers:
+    search tree reuse across decisions; mixed-strength pilots. Fourth consecutive
+    confirmation that only training-DISTRIBUTION changes have shipped.
