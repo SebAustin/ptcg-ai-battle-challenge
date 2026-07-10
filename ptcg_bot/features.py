@@ -12,6 +12,12 @@ recording sees dicts. Uses only information PUBLIC to both sides (no hand
 contents: the opponent's hand is absent at their decision points). Metadata
 features (damage/cost/type) come from :mod:`ptcg_bot.metadata` and are 0.0
 offline. Never raises; anything unresolvable contributes 0.0.
+
+v2 (gen4) appends 20 features after the original 41: evolution stage and
+headroom (a next stage exists in the pool), KO prize liability (ex/megaEx —
+multi-prize risk the v1 evaluator could not see), energy-tempo deficits
+(turns-to-ready for active and best bench backup), retreat cost, and discard
+composition (energies spent, Pokémon lost). All public-board metadata.
 """
 
 from __future__ import annotations
@@ -28,6 +34,10 @@ _MAX_ENERGY = 5.0
 _MAX_BENCH = 5.0
 _MAX_DMG = 300.0
 _MAX_TURN = 50.0
+_MAX_DEFICIT = 3.0
+_MAX_RETREAT = 4.0
+_MAX_DISCARD_ENERGY = 15.0
+_MAX_DISCARD_POKEMON = 10.0
 
 FEATURE_NAMES: tuple[str, ...] = (
     # prizes
@@ -78,6 +88,27 @@ FEATURE_NAMES: tuple[str, ...] = (
     "them_status",
     "turn",
     "our_selection",
+    # v2 — evolution / prize-liability / energy-tempo / discard (metadata; 0 offline)
+    "us_active_stage",
+    "them_active_stage",
+    "us_active_prize_risk",
+    "them_active_prize_risk",
+    "us_bench_prize_risk",
+    "them_bench_prize_risk",
+    "us_active_evolvable",
+    "them_active_evolvable",
+    "us_bench_evolvable",
+    "them_bench_evolvable",
+    "us_active_deficit",
+    "them_active_deficit",
+    "us_bench_ready_deficit",
+    "them_bench_ready_deficit",
+    "us_active_retreat",
+    "them_active_retreat",
+    "us_discard_energy",
+    "them_discard_energy",
+    "us_discard_pokemon",
+    "them_discard_pokemon",
 )
 FEATURE_COUNT = len(FEATURE_NAMES)
 
@@ -149,22 +180,70 @@ def _side(player: Any) -> dict[str, float]:
             active_id=0.0,
         )
 
+    stages = metadata.stage_info()
+    evolvable = metadata.evolvable_ids()
+    costs = metadata.attack_cost()
+    has_meta = bool(costs)
+
+    active_id = int(out["active_id"])
+    stage, prize = stages.get(active_id, (0, 1 if active_id else 0))
+    active_cost = costs.get(active_id)
+    out.update(
+        active_stage=float(stage) if active_id else 0.0,
+        active_prize=float(prize) if active_id else 0.0,
+        active_evolvable=1.0 if active_id in evolvable else 0.0,
+        active_deficit=(
+            max(0.0, active_cost - out["active_energy"])
+            if active_cost is not None
+            else 0.0
+        ),
+        active_retreat=float(metadata.retreat_cost().get(active_id, 0)),
+    )
+
     bench = [p for p in (_get(player, "bench") or ()) if p is not None]
     bench_hp = bench_energy = bench_dmg = 0.0
     bench_charged = 0
+    bench_prize = bench_evolvable = 0.0
+    # "No ready backup attacker" reads as the max deficit; 0.0 offline (no cg).
+    bench_ready_deficit = _MAX_DEFICIT if (has_meta and not bench) else 0.0
     for pokemon in bench:
-        hp, _mx, energy_n, _cid, dmg, charged = _pokemon_stats(pokemon)
+        hp, _mx, energy_n, cid, dmg, charged = _pokemon_stats(pokemon)
         bench_hp += hp
         bench_energy += energy_n
         bench_dmg = max(bench_dmg, dmg)
         bench_charged += charged
+        _stage, b_prize = stages.get(cid, (0, 1))
+        bench_prize = max(bench_prize, float(b_prize))
+        bench_evolvable += 1.0 if cid in evolvable else 0.0
+        if has_meta:
+            cost = costs.get(cid)
+            deficit = max(0.0, cost - energy_n) if cost is not None else 0.0
+            bench_ready_deficit = min(bench_ready_deficit, deficit)
     out.update(
         bench_n=float(len(bench)),
         bench_hp=bench_hp,
         bench_energy=bench_energy,
         bench_charged=float(bench_charged),
         bench_dmg=bench_dmg,
+        bench_prize=bench_prize if has_meta else 0.0,
+        bench_evolvable=bench_evolvable,
+        bench_ready_deficit=bench_ready_deficit,
     )
+
+    kinds = metadata.card_kind()
+    discard_energy = discard_pokemon = 0.0
+    for card in _get(player, "discard") or ():
+        try:
+            kind = kinds.get(int(_get(card, "id") or 0), -1)
+        except Exception:
+            kind = -1
+        if kind in (5, 6):  # BASIC_ENERGY / SPECIAL_ENERGY
+            discard_energy += 1.0
+        elif kind == 0:  # POKEMON
+            discard_pokemon += 1.0
+    out["discard_energy"] = discard_energy
+    out["discard_pokemon"] = discard_pokemon
+
     out["status"] = sum(1.0 for f in _STATUS_FLAGS if _get(player, f))
     return out
 
@@ -243,6 +322,27 @@ def extract(observation: Any, me: int) -> list[float]:
             _clamp(them["status"] / 5.0),
             _clamp(turn / _MAX_TURN),
             ours,
+            # v2 (order matches the FEATURE_NAMES v2 block)
+            _clamp(us["active_stage"] / 2.0),
+            _clamp(them["active_stage"] / 2.0),
+            _clamp((us["active_prize"] - 1.0) / 2.0),
+            _clamp((them["active_prize"] - 1.0) / 2.0),
+            _clamp((us["bench_prize"] - 1.0) / 2.0),
+            _clamp((them["bench_prize"] - 1.0) / 2.0),
+            us["active_evolvable"],
+            them["active_evolvable"],
+            _clamp(us["bench_evolvable"] / _MAX_BENCH),
+            _clamp(them["bench_evolvable"] / _MAX_BENCH),
+            _clamp(us["active_deficit"] / _MAX_DEFICIT),
+            _clamp(them["active_deficit"] / _MAX_DEFICIT),
+            _clamp(us["bench_ready_deficit"] / _MAX_DEFICIT),
+            _clamp(them["bench_ready_deficit"] / _MAX_DEFICIT),
+            _clamp(us["active_retreat"] / _MAX_RETREAT),
+            _clamp(them["active_retreat"] / _MAX_RETREAT),
+            _clamp(us["discard_energy"] / _MAX_DISCARD_ENERGY),
+            _clamp(them["discard_energy"] / _MAX_DISCARD_ENERGY),
+            _clamp(us["discard_pokemon"] / _MAX_DISCARD_POKEMON),
+            _clamp(them["discard_pokemon"] / _MAX_DISCARD_POKEMON),
         ]
     except Exception:
         return [0.0] * FEATURE_COUNT

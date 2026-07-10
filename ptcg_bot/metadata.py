@@ -130,3 +130,76 @@ def attack_cost() -> dict[int, int]:
 def valid_card_ids() -> tuple[int, ...]:
     """All valid card IDs (used to fill determinized hidden-info arrays)."""
     return tuple(int(c.cardId) for c in _all_cards())
+
+
+@cache
+def stage_info() -> dict[int, tuple[int, int]]:
+    """Map ``cardId -> (evolution stage 0/1/2, KO prize value 1/2/3)`` for Pokémon.
+
+    Prize value is what the OPPONENT takes when this Pokémon is Knocked Out:
+    3 for Mega Evolution ex, 2 for ex, 1 otherwise. ``{}`` offline.
+    """
+    table: dict[int, tuple[int, int]] = {}
+    try:
+        for c in _all_cards():
+            kind = getattr(c, "cardType", None)
+            if kind is None or int(kind) != 0:  # Pokémon only
+                continue
+            stage = (
+                2
+                if getattr(c, "stage2", False)
+                else (1 if getattr(c, "stage1", False) else 0)
+            )
+            prize = (
+                3
+                if getattr(c, "megaEx", False)
+                else (2 if getattr(c, "ex", False) else 1)
+            )
+            table[int(c.cardId)] = (stage, prize)
+    except Exception:
+        return {}
+    return table
+
+
+@cache
+def evolvable_ids() -> frozenset[int]:
+    """Card IDs for which a NEXT evolution stage exists in the card pool.
+
+    Built from ``evolvesFrom`` names: a Pokémon is "evolvable" if any card in
+    the pool lists its name as pre-evolution. Empty offline.
+    """
+    try:
+        cards = _all_cards()
+        next_stage_sources = {getattr(c, "evolvesFrom", None) for c in cards} - {None}
+        return frozenset(
+            int(c.cardId)
+            for c in cards
+            if getattr(c, "name", None) in next_stage_sources
+        )
+    except Exception:
+        return frozenset()
+
+
+@cache
+def retreat_cost() -> dict[int, int]:
+    """Map ``cardId -> retreat cost in energies`` (mobility). ``{}`` offline."""
+    table: dict[int, int] = {}
+    try:
+        for c in _all_cards():
+            table[int(c.cardId)] = int(getattr(c, "retreatCost", 0) or 0)
+    except Exception:
+        return {}
+    return table
+
+
+@cache
+def card_kind() -> dict[int, int]:
+    """Map ``cardId -> CardType int`` (0 Pokémon ... 5/6 Energy). ``{}`` offline."""
+    table: dict[int, int] = {}
+    try:
+        for c in _all_cards():
+            kind = getattr(c, "cardType", None)
+            table[int(c.cardId)] = int(kind) if kind is not None else -1
+    except Exception:
+        return {}
+    return table
