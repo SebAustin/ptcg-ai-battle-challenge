@@ -229,3 +229,21 @@ simulator / competition page resolves the open items.
     cleared. v7 = gen2 weights + Dwebble/Crustle list (netdecked; same disclosure as §23).
     make ci green (pipefail); bundle self-check; standalone 6/0. The flywheel (refresh meta ->
     retrain -> re-gate -> re-deck) is now the documented, repeatable improvement loop.
+
+25. **Flywheel turn 3: three honest negatives — v7 stands.** Meta refreshed from v7's
+    685-bracket episodes (59 -> 102 unique decks; v7 record 32W/28L, the first winning band;
+    losses keep the first-blood-ours 28/0 + 15-close signature). All three levers failed their
+    pre-registered gates and were mechanically rejected:
+    (a) **worlds=32**: 85.7% vs 85.1% baseline on the 102-deck set (+0.6 < +5 bar; also ~2x
+    slower per game) — worlds stays 12;
+    (b) **gen3** (12k games on the 102-deck meta): 86.2% vs 85.1% (bar 93.1%) — reverted to
+    gen2; second confirmation (after gen1) that re-running the loop without changing the
+    training DISTRIBUTION plateaus;
+    (c) **deck65 (Cinderace)**: 90% H2H vs our Dwebble/Crustle but only 77.8% vs the broad
+    meta (ours: 85.1%) — the G2 AND-rule (H2H >= 60% AND meta >= +8) correctly rejected a
+    rock-paper-scissors COUNTER that would lose the field to win the mirror.
+    Notes for gen4's pre-registration (decided now, before any gen4 numbers): the +8-POINT
+    bars are ceiling-compressed at an 85% baseline; future gates should use relative error
+    reduction (e.g. ship if losses-vs-meta drop >= 25%: 85.1% -> >= 88.8%). The next
+    structural levers: features v2 (evolution-line potential, energy tempo, per-archetype
+    opponent conditioning), search tree reuse across decisions, and mixed-strength pilots.
