@@ -306,3 +306,29 @@ simulator / competition page resolves the open items.
     (§27c) therefore submitted a v7 duplicate today to double the episode collection rate.
     Lever backlog for future turns: depth-at-ship-budget (needs 2.5s baseline), mixed
     opponent-strength pilots in self-play, meta refresh whenever >=15 new episodes land.
+
+29. **Turn 6: scouted the summit — harvester shipped, both levers gated OUT, and the real
+    bottleneck identified.** Built `tools/harvest.py` (committed; replaces the lost §23
+    scratch pipeline): public `ListEpisodes(submissionId)` reveals both agents' submission
+    ids + ratings per episode, so a greedy ladder-crawl reached the 1100+ bracket from our
+    v7 seed in TWO hops (317 submissions known, best 1272). Pulled 320 top replays; deck
+    extraction validated on our own episode (exact deck.csv recovery). **47 of 49 unique
+    1000+-rated decks were absent from our 102-deck set** — we had never seen the top meta.
+    Results, all mechanical: (a) same-day baseline 175W/28L = **86.2%/203** (vs 81.3%
+    yesterday, identical code — ~5-point day-to-day harness variance is real; same-day
+    anchors are mandatory); (b) **deck lever**: screen found ONE challenger (deck4, 5/6),
+    20-game H2H confirm **7/20 = 35% — G2 FAIL** (screen was noise; 48/49 top decks LOSE to
+    Dwebble/Crustle under OUR pilot — deck strength is pilot-relative, third confirmation);
+    (c) **gen6** (12k games on the 149-deck merged meta): G1a batch1 165W/37L =
+    **81.7%/202** vs bar 89.7% — FAIL outside the band, reverted to gen2. Interpretation:
+    training on decks our bracket never fields DILUTED fit to the deployment distribution;
+    "distribution change" only pays when it matches what we actually face (gen2 did).
+    **Forensics (399 top agent-games, >=1150):** MAIN mix PLAY 42.7 / ATTACH 15.9 / END
+    15.7 / ATTACK 10.4 / ABILITY 6.6 / EVOLVE 6.3 / RETREAT 2.5, avg 141 steps — vs our
+    attack-heavy short turns (ATTACK ~30%, no ability/evolve/retreat in sample; 1-game
+    caveat). The gap to 1200+ is BEHAVIORAL: trainer-driven card advantage and long
+    developed turns, which no evaluator retrain can add while the pilot's action policy
+    and rollouts stay attack-first. Backlog, in order: (1) develop-before-attack MAIN
+    policy + rollout policy (code lever, gateable same-day); (2) within-turn action-
+    sequence search; (3) sub-selection (non-MAIN) quality; (4) depth-at-ship-budget.
+    Daily publish (§27c): v7 duplicate submitted (no gate passed).

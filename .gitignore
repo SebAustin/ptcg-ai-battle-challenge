@@ -41,3 +41,6 @@ engine/
 
 # Self-play training data (regenerate with tools/selfplay.py)
 data/selfplay/
+
+# Harvested episode replays (competition data; rebuild with tools/harvest.py)
+data/replays/
