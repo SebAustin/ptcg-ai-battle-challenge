@@ -271,3 +271,38 @@ simulator / competition page resolves the open items.
     stays a candidate for when the meta distribution next changes). Remaining §25 levers:
     search tree reuse across decisions; mixed-strength pilots. Fourth consecutive
     confirmation that only training-DISTRIBUTION changes have shipped.
+
+27. **Turn 5 pre-registrations + the daily-publish policy (user-directed).** Decided BEFORE
+    any turn-5 gate numbers exist. (a) **gen5 two-stage bootstrap**: 12k meta-vs-meta games
+    generated in a worktree of `wip/features-v2-gen4` with the pilot now USING the gen4
+    learned leaf (61==61; addresses §26 caveat (i)); gen5 trains on those rows; ships iff
+    pooled `tools/pilot_gate.py` >= 86.0% (the §25 relative rule vs the same-harness 81.3%
+    baseline) over >= 400 games (204-game batches; one extra batch only if batch 1 lands
+    within +-3 of the bar) AND >= 65% vs heuristic. (b) **rollout-depth sweep** (search
+    lever; §26 pointed at the search, not the leaf): PTCG_SEARCH_ROLLOUT_DEPTH 16 and 24 at
+    worlds=12 on v7 code — deeper rollouts resolve close endgames to EXACT terminal values
+    (our loss signature is close endgames); same bar, plus worst-decision timing < 2.0s at
+    ship budget. One lever ships at a time; if both gate, the combination must re-confirm
+    with its own 400-game run. (c) **Daily publish** (user: "publish every day a better
+    version on kaggle"): each daily run submits EXACTLY ONE bundle — the gated winner when a
+    gate passes; otherwise the current best bundle re-submitted unchanged and labeled
+    "duplicate for episode collection" (parallel copies climb independently and roughly
+    double replay/meta data per day; "better every day" is the goal, but ONLY gates decide
+    what ships as new). Honest framing preserved: no gate, no version bump.
+
+28. **Turn 5 results: both levers gated OUT — v7 stands; five same-distribution negatives.**
+    (a) **gen5 two-stage bootstrap** (12k games, pilot USING the gen4 leaf; 870k rows; val
+    calibration clean): G1a batch1 84.3%/204 (within +-3 -> extra batch), batch2 81.3%/203 —
+    **pooled 337W/70L = 82.8%/407 vs bar 86.0% — FAIL** (+1.5 over baseline ~= 0.8 SE).
+    §26 caveat (i) is now answered: the bootstrap pilot was NOT the reason gen4 flatlined.
+    (b) **Rollout-depth sweep** on v7 code: depth16 82.6%/201, depth24 79.2%/202 — both
+    outside the +-3 band low, **rejected at screen** (depth trades worlds for plies and
+    LOSES at the 0.5s gate budget; monotone worse with depth). Honest confound logged: the
+    harness runs at PTCG_TURN_DEADLINE_S=0.5 while the shipped agent gets 2.5s — a
+    ship-budget depth test would need a fresh 2.5s baseline + screen (~3.5h) and stays in
+    the lever backlog. Score of the day: five consecutive same-distribution negatives
+    (gen1, gen3, worlds=32, features-v2/gen4, gen5 + depth) vs zero — the flywheel's only
+    proven fuel remains NEW META DATA (episodes from the live ladder). Daily-publish policy
+    (§27c) therefore submitted a v7 duplicate today to double the episode collection rate.
+    Lever backlog for future turns: depth-at-ship-budget (needs 2.5s baseline), mixed
+    opponent-strength pilots in self-play, meta refresh whenever >=15 new episodes land.
