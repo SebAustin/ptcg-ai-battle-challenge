@@ -332,3 +332,22 @@ simulator / competition page resolves the open items.
     policy + rollout policy (code lever, gateable same-day); (2) within-turn action-
     sequence search; (3) sub-selection (non-MAIN) quality; (4) depth-at-ship-budget.
     Daily publish (§27c): v7 duplicate submitted (no gate passed).
+
+30. **Turn 7 (cron): own-bracket refresh + gen7 — FAIL; the evaluator lever is formally
+    exhausted.** Refresh via `tools/harvest.py`: 260 own replays (v7 134 + two duplicates)
+    -> 150 unique decks seen -> **meta_decks.json 102 -> 202** (100 new; the 102 set backed
+    up to meta_decks_102_backup.json). The bracket has churned hard past v7 (rating slide
+    691 -> 640 corroborates). Same-day baseline on the refreshed set: 324W/78L =
+    **80.6%/402** (vs 86.2% on the stale set — the new decks are harder). Gen7 (12k games,
+    deployment-matched distribution, the exact gen2 recipe): G1a 321W/79L = **80.2%/400**
+    vs bar 85.5% — FAIL below the band at batch 1, reverted to gen2. Verdict after SEVEN
+    consecutive negatives (gen1, gen3, worlds, features-v2/gen4, gen5, gen6, gen7 —
+    same-loop, two-stage, richer features, top-bracket data, own-bracket refresh): at
+    4-world/0.5s-2.5s budgets the leaf evaluator is SATURATED; retraining cannot move game
+    outcomes regardless of distribution. gen2 shipped when the baseline was ~64%; at ~80%
+    vs own bracket there is nothing left for a leaf to add. The one lever with mechanistic
+    evidence behind it is BEHAVIORAL (§29 forensics: top bots PLAY 42.7%/ATTACK 10.4% over
+    141-step turns vs our attack-first 30%): develop-before-attack MAIN + rollout policy,
+    then within-turn sequence search. Next turn should run that code lever FIRST (gate:
+    same-day baseline on the 202 set, relative rule, one 404-game batch +-3 extra).
+    Daily publish (§27c): v7 duplicate submitted.
