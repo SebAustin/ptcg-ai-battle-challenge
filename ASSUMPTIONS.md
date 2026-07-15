@@ -380,3 +380,20 @@ simulator / competition page resolves the open items.
     Backlog remaining: (iii) trainer-QUALITY ranking (metadata-driven choice of which
     trainer/ability to play — the best-motivated lever left); (ii) dev-first + depth x3
     (now weakly motivated). Daily publish: v7 duplicate submitted.
+
+33. **Turn 10 (cron): trainer-quality PLAY ranking (§32 lever iii) — gated OUT at +0.8.**
+    Minimal build: `metadata.card_kind()` + `_best_play()` in `_choose_main`'s PLAY step
+    (strongest Pokémon -> Supporter -> Item/Tool/Stadium, resolved from our visible hand;
+    ordering semantics untouched, first-play fallback offline; 27 unit tests green).
+    Same-day baseline on the 238 set: 383W/88L = **81.3%/471**; bar 86.0%. Candidate:
+    389W/85L = **82.1%/474 — FAIL below the +-3 band**, reverted. First behavioral lever
+    with a POSITIVE sign (+0.8 ~= 0.6 SE, noise-compatible) — kind-ranking the play choice
+    neither helps enough nor hurts; the PLAY-choice surface (heuristic fires only when
+    search declines: >12 options or sub-selects) is evidently too narrow to move pooled
+    outcomes. Backlog now nearly dry: (ii) dev-first + rollout depth x3 remains (weakly
+    motivated, ~2h of gate time). The honest strategic read after 10 turns: v7 is at the
+    local optimum reachable by single-variable changes under this architecture; the loop's
+    standing value is now episode collection (duplicates), meta refreshes, and gate-ready
+    infrastructure for when a structural idea (within-turn sequence search over ALL MAIN
+    chains; skill-semantics-aware trainer play) is worth a build day.
+    Daily publish: v7 duplicate submitted.
