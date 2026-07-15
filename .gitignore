@@ -44,3 +44,4 @@ data/selfplay/
 
 # Harvested episode replays (competition data; rebuild with tools/harvest.py)
 data/replays/
+data/replays_own/

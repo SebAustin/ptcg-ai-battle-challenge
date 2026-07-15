@@ -351,3 +351,20 @@ simulator / competition page resolves the open items.
     then within-turn sequence search. Next turn should run that code lever FIRST (gate:
     same-day baseline on the 202 set, relative rule, one 404-game batch +-3 extra).
     Daily publish (§27c): v7 duplicate submitted.
+
+31. **Turn 8 (cron): develop-before-attack — gated OUT at -8.2 vs baseline; frequency is
+    not quality.** The §29/§30 behavioral lever, implemented minimally (lethal attacks kept
+    on top; otherwise ability/attach/evolve/play before the closing attack, in BOTH
+    `_choose_main` and the search rollout policy; 84 tests green incl. two updated priority
+    specs). Same-day baseline (v7 HEAD, 202-deck set): 335W/67L = **83.3%/402**; bar 87.5%.
+    Candidate: 302W/100L = **75.1%/402 — FAIL far below the band**, reverted. Autopsy
+    (hypotheses for follow-ups, not conclusions): (a) our ~640 bracket is tempo-driven —
+    delaying attacks loses races; (b) imitating top bots' MAIN-mix FREQUENCIES (PLAY 42.7%)
+    without their card-choice QUALITY plays more bad trainers, not better turns; (c) the
+    rollout change is confounding: at depth 8, ~5 dev actions/turn means rollouts no longer
+    reach attack exchanges, blinding the search to aggression — the leaf sees cosmetic
+    development instead of resolved trades. Refined backlog (one per future turn):
+    (i) dev-first heuristic with rollouts kept attack-first (isolates (c));
+    (ii) dev-first everywhere + rollout depth x3 (dev-first needs deeper sims);
+    (iii) trainer QUALITY: rank which trainer/ability to play via metadata instead of
+    first-of-type (the likely real gap vs 1200+). Daily publish: v7 duplicate submitted.
