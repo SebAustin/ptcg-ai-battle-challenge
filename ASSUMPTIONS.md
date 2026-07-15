@@ -368,3 +368,15 @@ simulator / competition page resolves the open items.
     (ii) dev-first everywhere + rollout depth x3 (dev-first needs deeper sims);
     (iii) trainer QUALITY: rank which trainer/ability to play via metadata instead of
     first-of-type (the likely real gap vs 1200+). Daily publish: v7 duplicate submitted.
+
+32. **Turn 9 (cron): meta refresh (202 -> 238) + lever (i) dev-first-heuristic-only —
+    gated OUT at -1.6.** Refresh: 86 replays from the two newest duplicates -> 36 new
+    decks. Same-day baseline on the 238 set: 385W/90L = **81.1%/475**; bar 85.8%.
+    Candidate (§31 lever (i): dev-first in `_choose_main` only, rollouts kept
+    attack-first, lethal still on top): 376W/97L = **79.5%/473 — FAIL below the band**,
+    reverted. Read together with §31 (-8.2 for the full variant): the rollout confound
+    was indeed the bulk of turn 8's damage, but heuristic-side dev-first alone is still
+    a small negative — at this bracket, tempo beats sequencing-without-card-quality.
+    Backlog remaining: (iii) trainer-QUALITY ranking (metadata-driven choice of which
+    trainer/ability to play — the best-motivated lever left); (ii) dev-first + depth x3
+    (now weakly motivated). Daily publish: v7 duplicate submitted.
