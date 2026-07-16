@@ -30,6 +30,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from . import config as cfg
 from . import engine_adapter, metadata, search
 
 # OptionType ids from the engine's cg/api.py.
@@ -178,6 +179,42 @@ def _attach_target(obs: dict[str, Any], options: list[dict[str, Any]]) -> int | 
     return picked if picked is not None else _prefer_active_target(options, _ATTACH)
 
 
+def _best_play(obs: dict[str, Any], options: list[dict[str, Any]]) -> int | None:
+    """PLAY option to take (turn-12 lever B, flag ``cfg.TRAINER_RANK``): the
+    strongest Pokémon first (board development), then trainers ranked by their
+    text-derived usefulness (draw > deck-search/energy > switch/heal) instead
+    of the engine's first-listed play. First-PLAY fallback offline."""
+    indices = [i for i, o in enumerate(options) if o.get("type") == _PLAY]
+    if not indices:
+        return None
+    kinds = metadata.card_kind()
+    if not kinds:
+        return indices[0]
+    power = metadata.card_power()
+    values = metadata.trainer_value()
+
+    def _rank(i: int) -> tuple[int, int, int]:
+        try:
+            option = options[i]
+            if option.get("area") != _AREA_HAND:
+                return (9, 0, 0)
+            current = obs.get("current") or {}
+            me = int(current.get("yourIndex") or 0)
+            hand = (current.get("players") or [{}, {}])[me].get("hand") or []
+            raw_id = (hand[int(option.get("index") or 0)] or {}).get("id")
+            if raw_id is None:
+                return (9, 0, 0)
+            card_id = int(raw_id)
+            if kinds.get(card_id) == 0:  # Pokémon: strongest first
+                dmg, hp = power.get(card_id, (0, 0))
+                return (0, -dmg, -hp)
+            return (1, -values.get(card_id, 0), 0)  # trainers by text value
+        except Exception:
+            return (9, 0, 0)
+
+    return min(indices, key=_rank)
+
+
 def _should_retreat(obs: dict[str, Any]) -> bool:
     """Retreat only when the Active cannot attack but a bench Pokémon is a
     ready (charged) attacker — the 'stuck wall' the ladder punishes."""
@@ -210,6 +247,8 @@ def _choose_main(
             index = _attach_target(obs, options)
         elif otype == _EVOLVE:
             index = _prefer_active_target(options, otype)
+        elif otype == _PLAY and cfg.TRAINER_RANK:
+            index = _best_play(obs, options)
         else:
             index = _first_of_type(options, otype)
         if index is not None:

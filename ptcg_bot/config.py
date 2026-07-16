@@ -55,6 +55,15 @@ SEARCH_WORLDS = _i("SEARCH_WORLDS", 12)  # K sampled hidden-state worlds
 SEARCH_ITERS_PER_WORLD = _i("SEARCH_ITERS_PER_WORLD", 200)
 SEARCH_ROLLOUT_DEPTH = _i("SEARCH_ROLLOUT_DEPTH", 8)  # 0 = direct 1-ply leaf eval
 LEARNED_EVAL = _i("LEARNED_EVAL", 1)  # 1 = learned leaf (eval_weights), 0 = heuristic
+# Sequence-aware search (turn-12 build day): after stepping a first option,
+# beam-optimize the REST of our turn (the engine's search tree is persistent —
+# branching from a parent state is supported) instead of playing it out with
+# the base policy. 0 = off (v7 behavior).
+SEQ_SEARCH = _i("SEQ_SEARCH", 0)
+SEQ_BEAM_WIDTH = _i("SEQ_BEAM_WIDTH", 2)
+SEQ_ACTION_CAP = _i("SEQ_ACTION_CAP", 6)
+# Trainer text-semantics PLAY ranking (turn-12 build day, lever B). 0 = off.
+TRAINER_RANK = _i("TRAINER_RANK", 0)
 UCT_C = _f("UCT_C", 1.4)  # exploration constant
 
 # --- Time budget (main.py guard) --------------------------------------------

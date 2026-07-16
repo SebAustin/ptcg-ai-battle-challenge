@@ -130,3 +130,54 @@ def attack_cost() -> dict[int, int]:
 def valid_card_ids() -> tuple[int, ...]:
     """All valid card IDs (used to fill determinized hidden-info arrays)."""
     return tuple(int(c.cardId) for c in _all_cards())
+
+
+@cache
+def card_kind() -> dict[int, int]:
+    """Map ``cardId -> CardType int`` (0 Pokémon, 1 Item, 2 Tool, 3 Supporter,
+    4 Stadium, 5/6 Energy). ``{}`` offline."""
+    table: dict[int, int] = {}
+    try:
+        for c in _all_cards():
+            kind = getattr(c, "cardType", None)
+            table[int(c.cardId)] = int(kind) if kind is not None else -1
+    except Exception:
+        return {}
+    return table
+
+
+# Effect keywords -> crude usefulness (Skill carries free TEXT only; trainer
+# texts are templated, so keyword presence is a workable value signal).
+_TRAINER_KEYWORDS: tuple[tuple[str, int], ...] = (
+    ("draw", 5),
+    ("search your deck", 4),
+    ("attach", 4),
+    ("energy", 3),
+    ("damage", 3),
+    ("switch", 2),
+    ("heal", 2),
+)
+
+
+@cache
+def trainer_value() -> dict[int, int]:
+    """Map ``cardId -> usefulness score`` for TRAINER cards (Item/Tool/
+    Supporter/Stadium), keyword-parsed from skill text. ``{}`` offline."""
+    table: dict[int, int] = {}
+    try:
+        for c in _all_cards():
+            kind = getattr(c, "cardType", None)
+            if kind is None or int(kind) not in (1, 2, 3, 4):
+                continue
+            text = " ".join(
+                str(getattr(s, "text", "") or "")
+                for s in (getattr(c, "skills", None) or ())
+            ).lower()
+            score = 1
+            for keyword, value in _TRAINER_KEYWORDS:
+                if keyword in text:
+                    score = max(score, value)
+            table[int(c.cardId)] = score
+    except Exception:
+        return {}
+    return table

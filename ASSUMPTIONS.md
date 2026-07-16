@@ -414,3 +414,27 @@ simulator / competition page resolves the open items.
     refresh, and the gate harness — ready for a structural BUILD-DAY (within-turn sequence
     search over whole MAIN chains; skill-semantics-aware trainer play), which needs an
     explicit user go. Daily publish: v7 duplicate submitted.
+
+35. **Turn 12 (user build day, "do both"): sequence search + trainer semantics — both
+    gated OUT; code kept flag-OFF.** Spike first: the engine's search tree is PERSISTENT
+    (branching from a parent searchId validated live: sibling boards diverge, roots stay
+    steppable) — this makes within-turn tree search cheap and is now on record. Built:
+    (A) `_sequence_value()` in search.py — after stepping a first option, beam-optimize
+    the REST of our turn (width 2, cap 6, all-options expansion pruned by the leaf eval),
+    then base-policy opponent rollout; flag `PTCG_SEQ_SEARCH`. Live-smoked: legal full
+    games, worst decision 0.40s at the 0.5s budget. (B) `metadata.trainer_value()`
+    (Skill text is free-form; keyword scoring: draw 5, deck-search/attach 4, damage 3,
+    switch/heal 2) + `_best_play()` behind `PTCG_TRAINER_RANK`. Gates (same tree via env
+    flags, same-day baseline on the 277 set): baseline 472W/78L = **85.8%/550** (note:
+    81.3% yesterday, same code — the +-2-3 day swing again); bar 89.4%. (A) **83.3%/551
+    (-2.5) FAIL**; (B) **82.7%/549 (-3.1) FAIL** — both below the band at batch 1.
+    Interpretation: (A) the beam optimizes against the LEAF EVAL, and the evaluator is
+    not accurate enough to steer within-turn choices — it amplifies its own biases
+    (Goodhart-in-the-turn); consistent with the 7-retrain saga. (B) matches turn 10's
+    null at a narrow surface. DECISION: both levers stay in the repo FLAG-OFF (defaults
+    SEQ_SEARCH=0/TRAINER_RANK=0; shipped agent bit-identical to v7; 70 unit tests green)
+    as tested infrastructure. Remaining pre-registered backlog item (the only one):
+    re-gate PTCG_SEQ_SEARCH=1 at SHIP budget (2.5s) against a fresh 2.5s baseline
+    (~3.5h pair) — the 0.5s gate starves the beam and may under-represent it.
+    Cron re-armed as a378aa7f (daily 10:17, expires ~Jul 27). Daily publish: v7
+    duplicate submitted.

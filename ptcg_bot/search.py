@@ -157,6 +157,79 @@ def _rollout(
     return evaluate_observation(obs, me)
 
 
+def _is_our_main(observation: Any, me: int) -> bool:
+    """True while the clone still offers US a MAIN decision (turn continues)."""
+    current = getattr(observation, "current", None)
+    select = getattr(observation, "select", None)
+    if current is None or select is None:
+        return False
+    if getattr(current, "result", -1) != -1:
+        return False
+    if int(getattr(current, "yourIndex", -1)) != me:
+        return False
+    return getattr(select, "type", None) == _SELECT_TYPE_MAIN
+
+
+def _sequence_value(
+    search_step: Any,
+    search_id: int,
+    observation: Any,
+    me: int,
+    deadline: float,
+    track: list[int],
+) -> float:
+    """Value of a node after OPTIMIZING the rest of our turn with a small beam.
+
+    The engine's search tree is persistent (branching from a parent id is
+    supported — validated live), so at each of OUR MAIN decisions we expand all
+    options, score children with the leaf evaluator, and keep the best
+    ``SEQ_BEAM_WIDTH``. Sub-selections and everything after our turn ends fall
+    back to the base-policy rollout. Returns max over beam leaves (we control
+    our own actions). ``track`` collects created searchIds for release.
+    """
+    beam: list[tuple[int, Any]] = [(search_id, observation)]
+    best_final = None
+    for _ in range(max(1, cfg.SEQ_ACTION_CAP)):
+        if time.monotonic() > deadline or not beam:
+            break
+        scored_children: list[tuple[float, int, Any]] = []
+        next_beam: list[tuple[int, Any]] = []
+        for sid, obs in beam:
+            if not _is_our_main(obs, me):
+                value = _rollout(search_step, sid, obs, _DEPTH, me)
+                best_final = value if best_final is None else max(best_final, value)
+                continue
+            options = getattr(getattr(obs, "select", None), "option", None) or []
+            if not options or int(getattr(obs.select, "maxCount", 1) or 1) != 1:
+                # Multi-selects inside our turn: single base-policy path.
+                state = search_step(sid, _rollout_choice(obs))
+                track.append(state.searchId)
+                next_beam.append((state.searchId, state.observation))
+                continue
+            for i in range(len(options)):
+                if time.monotonic() > deadline:
+                    break
+                state = search_step(sid, [i])
+                track.append(state.searchId)
+                scored_children.append(
+                    (
+                        evaluate_observation(state.observation, me),
+                        state.searchId,
+                        state.observation,
+                    )
+                )
+        scored_children.sort(key=lambda t: -t[0])
+        keep = scored_children[: max(1, cfg.SEQ_BEAM_WIDTH)]
+        beam = [(sid, obs) for _v, sid, obs in keep] + next_beam
+    for sid, obs in beam:  # beam exhausted by cap/deadline: rollout remainders
+        if time.monotonic() > deadline + 0.2:
+            value = evaluate_observation(obs, me)
+        else:
+            value = _rollout(search_step, sid, obs, _DEPTH, me)
+        best_final = value if best_final is None else max(best_final, value)
+    return best_final if best_final is not None else 0.5
+
+
 def choose_by_search(obs_dict: dict[str, Any]) -> list[int] | None:
     """Best MAIN option by K-world rollout search, or ``None`` to fall back."""
     try:
@@ -210,9 +283,24 @@ def choose_by_search(obs_dict: dict[str, Any]) -> list[int] | None:
                     state = search_begin(observation, *hidden)
                     search_ids.append(state.searchId)
                     stepped = search_step(state.searchId, [i])
-                    totals[i] += _rollout(
-                        search_step, stepped.searchId, stepped.observation, _DEPTH, me
-                    )
+                    search_ids.append(stepped.searchId)
+                    if cfg.SEQ_SEARCH:
+                        totals[i] += _sequence_value(
+                            search_step,
+                            stepped.searchId,
+                            stepped.observation,
+                            me,
+                            deadline,
+                            search_ids,
+                        )
+                    else:
+                        totals[i] += _rollout(
+                            search_step,
+                            stepped.searchId,
+                            stepped.observation,
+                            _DEPTH,
+                            me,
+                        )
                     visited[i] += 1
         finally:
             for sid in search_ids:

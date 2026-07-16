@@ -167,6 +167,59 @@ def test_should_retreat_false_without_metadata(monkeypatch):
 
 
 @pytest.mark.unit
+def test_best_play_ranks_pokemon_then_trainer_value(monkeypatch):
+    from ptcg_bot import main as m
+    from ptcg_bot import metadata
+
+    # hand: [weak supporter 300 (heal=2), pokemon 301, draw item 302 (draw=5)]
+    monkeypatch.setattr(metadata, "card_kind", lambda: {300: 3, 301: 0, 302: 1})
+    monkeypatch.setattr(metadata, "card_power", lambda: {301: (80, 70)})
+    monkeypatch.setattr(metadata, "trainer_value", lambda: {300: 2, 302: 5})
+    obs = {
+        "current": {
+            "yourIndex": 0,
+            "players": [{"hand": [{"id": 300}, {"id": 301}, {"id": 302}]}, {}],
+        }
+    }
+    options = [
+        {"type": 7, "area": 2, "index": 0},
+        {"type": 7, "area": 2, "index": 1},
+        {"type": 7, "area": 2, "index": 2},
+    ]
+    assert m._best_play(obs, options) == 1  # Pokémon first
+    # Among trainers alone: the draw item (5) outranks the heal supporter (2).
+    assert m._best_play(obs, [options[0], options[2]]) == 1
+
+
+@pytest.mark.unit
+def test_trainer_rank_flag_gates_best_play(monkeypatch):
+    from ptcg_bot import config as cfg
+    from ptcg_bot import main as m
+    from ptcg_bot import metadata
+
+    monkeypatch.setattr(metadata, "card_kind", lambda: {300: 3, 302: 1})
+    monkeypatch.setattr(metadata, "trainer_value", lambda: {300: 2, 302: 5})
+    monkeypatch.setattr(metadata, "card_power", dict)
+    obs = {
+        "current": {
+            "yourIndex": 0,
+            "players": [{"hand": [{"id": 300}, {"id": 302}]}, {}],
+        },
+        "select": {
+            "maxCount": 1,
+            "option": [
+                {"type": 7, "area": 2, "index": 0},
+                {"type": 7, "area": 2, "index": 1},
+            ],
+        },
+    }
+    monkeypatch.setattr(cfg, "TRAINER_RANK", 0)
+    assert m.agent(obs) == [0]  # flag off: first PLAY (v7 behavior)
+    monkeypatch.setattr(cfg, "TRAINER_RANK", 1)
+    assert m.agent(obs) == [1]  # flag on: the draw item wins
+
+
+@pytest.mark.unit
 def test_attach_feeds_bench_once_active_charged(monkeypatch):
     from ptcg_bot import main as m
     from ptcg_bot import metadata
