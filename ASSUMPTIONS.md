@@ -397,3 +397,20 @@ simulator / competition page resolves the open items.
     infrastructure for when a structural idea (within-turn sequence search over ALL MAIN
     chains; skill-semantics-aware trainer play) is worth a build day.
     Daily publish: v7 duplicate submitted.
+
+34. **Turn 11 (cron): meta refresh (238 -> 277) + the LAST backlog lever, dev-first +
+    rollout depth x3 — gated OUT at -8.5; the pre-registered backlog is empirically
+    closed.** Refresh: 93 replays -> 39 new decks. Same-day baseline on the 277 set:
+    447W/103L = **81.3%/550**; bar 86.0%. Candidate (turn-8 dev-first code +
+    PTCG_SEARCH_ROLLOUT_DEPTH=24): 402W/150L = **72.8%/552 — FAIL far below the band**,
+    reverted. The §31(c) interaction hypothesis is refuted: deeper rollouts do not rescue
+    develop-first (-8.5 ~= turn 8's -8.2 at depth 8); dev-first sequencing is simply wrong
+    for this bracket's tempo regardless of simulation depth. LEDGER after 11 turns: every
+    lever class exhausted with pre-registered gates — evaluator retrains x7, search budget
+    x3 (worlds, depth, depth-with-dev-first), behavior x3 (dev-first full/heuristic-only,
+    trainer-quality), deck challengers x2 (Cinderace, top-bracket deck4). v7 (gen2 +
+    Dwebble/Crustle + worlds=12/depth=8) is the measured local optimum of this
+    architecture. Standing loop value: duplicates for episode collection, periodic meta
+    refresh, and the gate harness — ready for a structural BUILD-DAY (within-turn sequence
+    search over whole MAIN chains; skill-semantics-aware trainer play), which needs an
+    explicit user go. Daily publish: v7 duplicate submitted.
