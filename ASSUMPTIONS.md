@@ -438,3 +438,20 @@ simulator / competition page resolves the open items.
     (~3.5h pair) — the 0.5s gate starves the beam and may under-represent it.
     Cron re-armed as a378aa7f (daily 10:17, expires ~Jul 27). Daily publish: v7
     duplicate submitted.
+
+36. **Turn 13 (cron): the §35 caveat resolved — SEQ_SEARCH fails at SHIP budget too;
+    the backlog is empty at all budgets.** Refresh: 27 replays -> 9 new decks (286 set;
+    own-bracket deck discovery is saturating). Ship-budget pair (PTCG_TURN_DEADLINE_S=2.5,
+    the bundled agent's real budget): baseline 476W/92L = **83.8%/568**; bar 87.9%.
+    PTCG_SEQ_SEARCH=1: 472W/96L = **83.1%/568 (-0.7) — FAIL at batch 1**. With 5x the
+    per-decision budget the beam is still noise-flat: §35's Goodhart interpretation is
+    CONFIRMED at both budgets — the leaf evaluator cannot rank within-turn continuations,
+    so optimizing against it buys nothing. The architecture's ceiling is now measured
+    from every direction: data (7 retrains), budget (worlds/depth/ship-budget beam),
+    policy (3 behavioral variants), deck (2 challengers + 49 top-bracket decks), and
+    search structure (sequence beam at 2 budgets). v7 stands as the terminal artifact of
+    this architecture. Loop mode: maintenance (refresh + daily duplicate). A genuinely
+    different evaluator (e.g. full-game supervised value from TOP-BRACKET replay
+    outcomes — imitating 1200+ agents' value judgments rather than our own self-play's)
+    is the only unexplored direction and would need a user build day.
+    Daily publish: v7 duplicate submitted.
