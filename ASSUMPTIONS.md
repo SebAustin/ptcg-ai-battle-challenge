@@ -455,3 +455,8 @@ simulator / competition page resolves the open items.
     outcomes — imitating 1200+ agents' value judgments rather than our own self-play's)
     is the only unexplored direction and would need a user build day.
     Daily publish: v7 duplicate submitted.
+
+37. **Maintenance turn: refresh only (286 -> 344, +58 decks — §36's "saturating" read was
+    premature; the bracket churns in bursts as new opponents submit). No lever (backlog
+    empty per §36); no retraining (§30). Daily publish: v7 duplicate submitted. Fleet of
+    9 collectors, best 664.9.**
