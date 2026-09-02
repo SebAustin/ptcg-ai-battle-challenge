@@ -39,6 +39,8 @@ _RUNTIME_MODULES = (
     "belief.py",
     "features.py",
     "eval_weights.py",
+    "option_features.py",
+    "policy.py",
     "metadata.py",
     "engine_adapter.py",
     "state.py",
@@ -47,6 +49,11 @@ _RUNTIME_MODULES = (
     "rules.py",
     "config.py",
 )
+
+# Generated only when a behavior-cloned policy has GATED (ASSUMPTIONS §38);
+# gitignored otherwise. ptcg_bot.policy already degrades to None/v7 without
+# it, so bundling must not require its presence.
+_OPTIONAL_RUNTIME_MODULES = ("policy_weights.py",)
 
 _ENTRY = '''"""Kaggle submission entry — the harness imports this and calls agent()."""
 
@@ -115,6 +122,12 @@ def main(argv: list[str] | None = None) -> None:
 
     for name in _RUNTIME_MODULES:
         shutil.copy(_ROOT / "ptcg_bot" / name, _DIST / "ptcg_bot" / name)
+    for name in _OPTIONAL_RUNTIME_MODULES:
+        src = _ROOT / "ptcg_bot" / name
+        if src.exists():
+            shutil.copy(src, _DIST / "ptcg_bot" / name)
+        else:
+            print(f"[bundle] {name} absent — skipped (ptcg_bot.policy degrades to v7)")
     shutil.copytree(_CG_SRC, _DIST / "cg")
     (_DIST / "main.py").write_text(_ENTRY, encoding="utf-8")
     (_DIST / "deck.csv").write_text(deck_csv, encoding="utf-8")

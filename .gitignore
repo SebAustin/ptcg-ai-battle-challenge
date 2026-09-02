@@ -45,3 +45,11 @@ data/selfplay/
 # Harvested episode replays (competition data; rebuild with tools/harvest.py)
 data/replays/
 data/replays_own/
+
+# Behavior-cloning dataset shards (competition data; rebuild with tools/bc_dataset.py)
+data/bc/
+
+# Behavior-cloned policy weights (regenerate with tools/train_policy.py). Only
+# committed if a BC configuration passes its ASSUMPTIONS §38 gate — unlike
+# eval_weights.py, which stays committed as the actively shipped evaluator.
+ptcg_bot/policy_weights.py

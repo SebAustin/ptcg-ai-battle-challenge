@@ -27,7 +27,7 @@ from typing import Any
 
 from . import belief
 from . import config as cfg
-from . import features
+from . import features, policy
 
 _MAX_OPTIONS = 12
 _SELECT_TYPE_MAIN = 0
@@ -126,6 +126,10 @@ def _rollout_choice(observation: Any) -> list[int]:
     if not options:
         return []
     max_count = int(getattr(select, "maxCount", 1) or 1)
+    if cfg.BC_ROLLOUT:  # turn-14: imitation policy as the rollout base policy
+        imitated = policy.choose(observation)
+        if imitated:
+            return imitated
     if max_count == 1:
         for i, o in enumerate(options):
             if getattr(o, "type", None) == _ATTACK:
@@ -250,7 +254,17 @@ def choose_by_search(obs_dict: dict[str, Any]) -> list[int] | None:
         if select.get("type") != _SELECT_TYPE_MAIN:
             return None  # only search MAIN; sub-selects use the fast heuristic
         options = select.get("option") or []
-        if not (2 <= len(options) <= _MAX_OPTIONS):
+        if len(options) < 2:
+            return None
+        # Turn-14: with a BC prior, search only the imitation policy's top-k
+        # options (also makes >_MAX_OPTIONS prompts searchable).
+        candidates = list(range(len(options)))
+        if cfg.BC_PRIOR_TOPK > 0:
+            prior = policy.scores(obs_dict)
+            if prior is not None:
+                ranked = sorted(range(len(options)), key=lambda i: -prior[i])
+                candidates = sorted(ranked[: max(2, cfg.BC_PRIOR_TOPK)])
+        if len(candidates) > _MAX_OPTIONS:
             return None
         if int(select.get("maxCount") or 0) != 1:
             return None
@@ -277,7 +291,7 @@ def choose_by_search(obs_dict: dict[str, Any]) -> list[int] | None:
                 hidden = belief.determinize(observation, my_deck, random.Random(world))
                 if hidden is None:
                     break
-                for i in range(len(options)):
+                for i in candidates:
                     if time.monotonic() > deadline:
                         break
                     state = search_begin(observation, *hidden)

@@ -64,6 +64,16 @@ SEQ_BEAM_WIDTH = _i("SEQ_BEAM_WIDTH", 2)
 SEQ_ACTION_CAP = _i("SEQ_ACTION_CAP", 6)
 # Trainer text-semantics PLAY ranking (turn-12 build day, lever B). 0 = off.
 TRAINER_RANK = _i("TRAINER_RANK", 0)
+
+# --- Behavior-cloned policy (turn-14 build day; ptcg_bot/policy.py) ---------
+# Imitation of top-bracket agents' decisions (policy_weights.py). All default
+# to v7 behavior; the gate turns them on per configuration via env.
+SEARCH_ENABLED = _i("SEARCH_ENABLED", 1)  # 0 = heuristic/BC only, no search
+BC_POLICY = _i("BC_POLICY", 0)  # 1 = BC decides where the heuristic would
+BC_LETHAL_GUARD = _i("BC_LETHAL_GUARD", 1)  # keep the lethal-attack override
+BC_ROLLOUT = _i("BC_ROLLOUT", 0)  # 1 = BC as the search rollout base policy
+BC_PRIOR_TOPK = _i("BC_PRIOR_TOPK", 0)  # >0 = search only BC's top-k options
+BC_MAX_OPTIONS = _i("BC_MAX_OPTIONS", 60)  # skip BC on wider prompts
 UCT_C = _f("UCT_C", 1.4)  # exploration constant
 
 # --- Time budget (main.py guard) --------------------------------------------

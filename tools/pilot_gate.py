@@ -71,15 +71,17 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--games-per-deck", type=int, default=2)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--label", default="pilot", help="tag for the report line")
+    parser.add_argument("--meta", default=str(_META), help="opponent deck set JSON")
     args = parser.parse_args(argv)
 
     if not (_ENGINE / "cg" / "api.py").exists():
         raise SystemExit("engine not found — run `make engine` first")
-    if not _META.exists():
-        raise SystemExit("data/meta_decks.json missing — extract it from replays")
+    meta_path = Path(args.meta)
+    if not meta_path.exists():
+        raise SystemExit(f"{meta_path} missing — extract it from replays")
 
     ours = _load_deck(Path(args.deck))
-    metas: list[list[int]] = json.loads(_META.read_text(encoding="utf-8"))
+    metas: list[list[int]] = json.loads(meta_path.read_text(encoding="utf-8"))
 
     workers = max(1, min(args.workers, len(metas)))
     slices: list[list[list[int]]] = [metas[w::workers] for w in range(workers)]

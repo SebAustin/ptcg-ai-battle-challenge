@@ -101,6 +101,16 @@ tune: ## Deck fitness tuning by self-play (rank×energy vs default; needs engine
 bundle: ## Package dist/submission/ (main.py + deck.csv + ptcg_bot + cg) + zip (needs engine+data)
 	$(PY) -m tools.bundle $(ARGS)
 
+harvest: ## Ladder-crawl + pull top-bracket replays into data/replays (needs kaggle auth)
+	$(PY) -m tools.harvest crawl --seed 54501137 --target-score 1150 --want 60 --max-hops 80 --out data/top_submissions_1150.json
+	$(PY) -m tools.harvest pull --subs data/top_submissions_1150.json --per-sub 60 --dest data/replays
+
+bc-dataset: ## Build the behavior-cloning dataset from data/replays (needs engine)
+	$(PY) -m tools.bc_dataset $(ARGS)
+
+train-policy: ## Train the BC option policy -> ptcg_bot/policy_weights.py
+	$(PY) -m tools.train_policy $(ARGS)
+
 check: test verify bundle ## Full local gate: tests + engine verify + bundle
 
 submit: bundle ## Upload the agent to Kaggle (outward-facing — see SUBMIT.md)

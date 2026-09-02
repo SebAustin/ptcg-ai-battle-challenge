@@ -160,6 +160,54 @@ _TRAINER_KEYWORDS: tuple[tuple[str, int], ...] = (
 
 
 @cache
+def card_traits() -> dict[int, tuple[int, int, int, int, int]]:
+    """Map ``cardId -> (stage 0/1/2, ex, megaEx, retreatCost, evolvable)`` for
+    Pokémon (evolvable = a next stage exists in the pool). ``{}`` offline."""
+    table: dict[int, tuple[int, int, int, int, int]] = {}
+    try:
+        cards = _all_cards()
+        next_stage_sources = {getattr(c, "evolvesFrom", None) for c in cards} - {None}
+        for c in cards:
+            kind = getattr(c, "cardType", None)
+            if kind is None or int(kind) != 0:
+                continue
+            stage = (
+                2
+                if getattr(c, "stage2", False)
+                else (1 if getattr(c, "stage1", False) else 0)
+            )
+            table[int(c.cardId)] = (
+                stage,
+                1 if getattr(c, "ex", False) else 0,
+                1 if getattr(c, "megaEx", False) else 0,
+                int(getattr(c, "retreatCost", 0) or 0),
+                1 if getattr(c, "name", None) in next_stage_sources else 0,
+            )
+    except Exception:
+        return {}
+    return table
+
+
+@cache
+def attack_info() -> dict[int, tuple[int, int]]:
+    """Map ``attackId -> (damage, energy cost)``. ``{}`` offline."""
+    try:
+        from cg.api import all_attack
+    except Exception:
+        return {}
+    try:
+        return {
+            int(a.attackId): (
+                int(getattr(a, "damage", 0) or 0),
+                len(getattr(a, "energies", None) or ()),
+            )
+            for a in all_attack()
+        }
+    except Exception:
+        return {}
+
+
+@cache
 def trainer_value() -> dict[int, int]:
     """Map ``cardId -> usefulness score`` for TRAINER cards (Item/Tool/
     Supporter/Stadium), keyword-parsed from skill text. ``{}`` offline."""

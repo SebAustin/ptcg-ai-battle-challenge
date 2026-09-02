@@ -460,3 +460,64 @@ simulator / competition page resolves the open items.
     premature; the bracket churns in bursts as new opponents submit). No lever (backlog
     empty per §36); no retraining (§30). Daily publish: v7 duplicate submitted. Fleet of
     9 collectors, best 664.9.**
+
+38. **Turn 14 (user build day): behavior cloning from top-bracket replays — PRE-REGISTRATION
+    (written before any accuracy or gate number exists).** Hypothesis: the measured ceiling
+    (§30-§36) is our self-play value function; imitating the DECISIONS of 1150+ agents
+    (public replays; ~60 submissions, thousands of games via `tools/harvest.py`) bypasses it
+    and targets the §29 behavioral gap directly. Build: `ptcg_bot/option_features.py`
+    (16 decision + 40 per-option ATTRIBUTE features; never card ids — top decks are not
+    ours), `tools/bc_dataset.py` (label = `steps[t+1][i].action` for the observation at
+    `steps[t][i]`, ACTIVE + `yourIndex==i` + in-range distinct indices; identical option
+    rows collapse to one class; v7 pick recorded), `tools/train_policy.py` (late-fusion
+    softmax model, game split + leave-one-deck-out), `ptcg_bot/policy.py` behind env flags
+    (`SEARCH_ENABLED`, `BC_POLICY`, `BC_LETHAL_GUARD`, `BC_ROLLOUT`, `BC_PRIOR_TOPK`,
+    `BC_MAX_OPTIONS`; all defaults = v7). GATES, mechanical: **G0 offline fail-fast** —
+    held-out (game-split) MAIN top-1 >= v7-agreement + 10 pts AND >= 2x chance; LODO MAIN
+    top-1 within 10 pts of game-split; fail -> stop, no online gates. Then same-day
+    `pilot_gate` baseline on the 344-deck set (0.5 s, 8 workers), bar = B + 0.25(100-B),
+    pooled >= 400, +-3 -> one extra batch: **G1** pure imitation (SEARCH_ENABLED=0,
+    BC_POLICY=1) -> **G2** BC prior top-4 under v7 search -> **G3** BC rollouts (timing
+    precondition: worst decision < 0.45 s at gate budget, < 2.0 s at ship budget) ->
+    **G4** (only if G1 is not far below band) BC pilot + the most frequent top archetype's
+    deck under the §24 dual rule. Any passer: second view vs `data/top_decks.json`
+    (>= baseline - 3) and a ship-budget confirmation pair; >= 65% vs heuristic; one lever
+    ships at a time. Imitation of public replays is disclosed here and in the writeup
+    (same footing as the §23 netdecking disclosure).
+
+39. **Turn 14 results: G0 PASSED convincingly, all three online configurations gated OUT —
+    the most informative negative of the campaign.** Corpus: ladder-crawled 60 submissions
+    >=1150 rating (2 hops from our seed, best found 1305), pulled 3,579 replays -> 129,618
+    decisions (mean 5.4 MAIN options; ~70/30 same-step/next-step label-alignment split,
+    confirmed on real data after the naive fixed-offset assumption was WRONG — see
+    `tools/bc_dataset.py` docstring). **G0 offline (PASS):** game-split MAIN top-1 54.1%
+    vs bar 47.7% (v7-agreement 37.7% + 10) and vs bar 47.6% (2x the CORRECT MAIN-only
+    chance, 23.8% -- the trainer's blended MAIN+CARD "chance" metric was the wrong
+    denominator; recomputed directly from held-out data before deciding). LODO (top deck
+    held out) MAIN top-1 55.7%, *higher* than game-split -- the attribute-only feature
+    design (no card ids) genuinely transfers to a deck no top agent plays, which is exactly
+    what it was built for. **Online, same-day baseline 82.5%/685 (344-deck set), bar
+    86.9%:** G1 pure imitation (no search) **73.2%/683 FAIL** (-9.3 vs baseline, -13.7 vs
+    bar); G2 search restricted to BC's top-4 root options **76.7%/686 FAIL** (-5.8 vs
+    baseline); G3 BC as the rollout base policy (full root search + leaf eval unchanged)
+    **80.1%/685 FAIL** (-2.4 vs baseline, still 6.8 below bar, no batch2 warranted at any
+    stage). G4 disqualified (G1 far below the band). Clean dose-response: G1 < G2 < G3 <
+    baseline -- the LESS of v7's search machinery BC is allowed to touch, the smaller the
+    damage, but 54% single-decision accuracy is not enough to help at ANY integration
+    point tried. Diagnosis: individual-decision imitation accuracy does not imply
+    game-winning play -- a lookahead-free classifier's ~46% per-decision divergence from
+    top play compounds over 100+ decisions faster than raw accuracy suggests, and even as
+    a rollout/prior signal it is currently net-negative next to v7's simpler attack-first
+    policies which the K-world averaging already compensates for. Shipped agent UNCHANGED
+    (all BC_* flags default 0, SEARCH_ENABLED=1 = v7 bit-identical; `make bundle` verified
+    to work with `policy_weights.py` ABSENT -- `ptcg_bot.policy` degrades to None/v7
+    cleanly). Disposition: infrastructure (`option_features.py`, `policy.py`,
+    `tools/bc_dataset.py`, `tools/train_policy.py`, the label-alignment fix, config flags)
+    committed as tested, inert code; the gen0 trained weights are NOT committed
+    (`ptcg_bot/policy_weights.py` gitignored -- unlike `eval_weights.py`, nothing here
+    passed a gate to earn a permanent place in the repo) but remain on local disk and are
+    trivially regenerable (`make harvest && make bc-dataset && make train-policy`).
+    Next ideas for a future build day, if revisited: a MUCH larger corpus (learning
+    curve was not measured -- 130k decisions may simply be insufficient for a 57-input
+    late-fusion model), or use imitation only as a TIEBREAKER among near-equal search
+    values rather than a prior/rollout override. Daily publish: v7 duplicate submitted.

@@ -31,7 +31,7 @@ import os
 from typing import Any
 
 from . import config as cfg
-from . import engine_adapter, metadata, search
+from . import engine_adapter, metadata, policy, search
 
 # OptionType ids from the engine's cg/api.py.
 _ABILITY = 10
@@ -327,13 +327,45 @@ def _ranked_selection(obs: dict[str, Any], select: dict[str, Any]) -> list[int]:
     return sorted(order[:count])  # sorted indices: stable, duplicate-free, legal
 
 
+def _lethal_attack(options: list[dict[str, Any]], opp_hp: int) -> int | None:
+    """Cheapest attack that KOs the opponent's Active now, else ``None``."""
+    if opp_hp <= 0:
+        return None
+    damage = metadata.attack_damage()
+
+    def _dmg(index: int) -> int:
+        attack_id = options[index].get("attackId")
+        return damage.get(attack_id, 0) if isinstance(attack_id, int) else 0
+
+    lethal = [
+        i
+        for i, o in enumerate(options)
+        if o.get("type") == _ATTACK and _dmg(i) >= opp_hp
+    ]
+    return min(lethal, key=_dmg) if lethal else None
+
+
 def _heuristic_selection(obs: dict[str, Any]) -> list[int]:
-    """Search-free v3 policy for one (non-deck-request) selection."""
+    """Search-free policy for one (non-deck-request) selection.
+
+    With ``cfg.BC_POLICY`` (turn-14 build day) the behavior-cloned policy
+    decides first — after the lethal-attack guard — and the v7 heuristics
+    remain the fallback whenever it declines.
+    """
     select = obs.get("select") or {}
     options = select.get("option") or []
     if not options:
         return []
-    if int(select.get("maxCount") or 0) == 1:
+    max_count = int(select.get("maxCount") or 0)
+    if cfg.BC_POLICY:
+        if max_count == 1 and cfg.BC_LETHAL_GUARD:
+            lethal = _lethal_attack(options, _opp_active_hp(obs))
+            if lethal is not None:
+                return [lethal]
+        imitated = policy.choose(obs)
+        if imitated:
+            return imitated
+    if max_count == 1:
         picked = _choose_main(obs, options)
         if picked is not None:
             return picked
@@ -399,7 +431,7 @@ def agent(obs_dict: dict[str, Any]) -> list[int]:
     try:
         if engine_adapter.is_deck_request(obs_dict):
             return _read_deck()
-        searched = search.choose_by_search(obs_dict)
+        searched = search.choose_by_search(obs_dict) if cfg.SEARCH_ENABLED else None
         return searched if searched is not None else _heuristic_selection(obs_dict)
     except Exception:
         return _fallback(obs_dict)
