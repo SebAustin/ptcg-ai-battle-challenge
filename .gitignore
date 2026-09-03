@@ -15,11 +15,18 @@ dist/
 # Tuner output
 tools/best_config.env
 
+# Generated writeup figures (regenerate with `make figures`)
+writeup/figures/
+
 # Competition Data — MUST NOT be redistributed (Rules §2.4). Download locally
 # with `make data`; never commit the card files or images.
 data/*.csv
 data/*.pdf
 data/*.json
+
+# Simulation engine + sample_submission (competition IP, "Competition Use Only").
+# Fetch locally with `make engine` after accepting the pokemon-tcg-ai-battle rules.
+engine/
 
 # OS / editor
 .DS_Store
@@ -30,3 +37,19 @@ data/*.json
 # Local agent/session state
 .remember/
 .claude/
+.cursor/
+
+# Self-play training data (regenerate with tools/selfplay.py)
+data/selfplay/
+
+# Harvested episode replays (competition data; rebuild with tools/harvest.py)
+data/replays/
+data/replays_own/
+
+# Behavior-cloning dataset shards (competition data; rebuild with tools/bc_dataset.py)
+data/bc/
+
+# Behavior-cloned policy weights (regenerate with tools/train_policy.py). Only
+# committed if a BC configuration passes its ASSUMPTIONS §38 gate — unlike
+# eval_weights.py, which stays committed as the actively shipped evaluator.
+ptcg_bot/policy_weights.py

@@ -6,9 +6,23 @@ PY := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 KAGGLE := $(VENV)/bin/kaggle
 COMP := pokemon-tcg-ai-battle-challenge-strategy
+SIM_COMP := pokemon-tcg-ai-battle
+ENGINE_DIR := engine
+
+# Quality-gate tools (dev-only; see requirements.txt + pyproject.toml).
+RUFF := $(VENV)/bin/ruff
+BLACK := $(VENV)/bin/black
+ISORT := $(VENV)/bin/isort
+MYPY := $(VENV)/bin/mypy
+BANDIT := $(VENV)/bin/bandit
+PIPAUDIT := $(VENV)/bin/pip-audit
+
+# Our Python lives here — scope the tools to these so stray local tooling
+# (.cursor/, editor scratch, the gitignored engine/) is never linted/formatted.
+SRC := ptcg_bot deckbuilder tools tests writeup
 
 .DEFAULT_GOAL := help
-.PHONY: help setup data test verify tournament soak bundle tune check submit freeze clean
+.PHONY: help setup data engine test lint format typecheck audit security ci deck figures verify tournament soak bundle tune check submit freeze clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -28,24 +42,74 @@ data: ## Download the competition card data into data/ (~320 MB incl. PDFs)
 	$(KAGGLE) competitions download -c $(COMP) -f "Card_ID List_EN.pdf" -p data/
 	$(KAGGLE) competitions download -c $(COMP) -f "Card_ID List_JP.pdf" -p data/
 
-test: ## Run the unit test suite
+engine: ## Download the sim engine + sample_submission into engine/ (accept SIM_COMP rules first!)
+	@echo "Requires ACCEPTING the rules of https://www.kaggle.com/competitions/$(SIM_COMP)/rules (a 403 means you have not joined yet)."
+	@mkdir -p $(ENGINE_DIR)
+	$(KAGGLE) competitions download -c $(SIM_COMP) -p $(ENGINE_DIR) -o
+	cd $(ENGINE_DIR) && unzip -oq $(SIM_COMP).zip 'sample_submission/*' 'ptcg_engine/*' && rm -f $(SIM_COMP).zip
+	@echo "Done -> $(ENGINE_DIR)/ (gitignored). Next: wire ptcg_bot/engine_adapter.py against $(ENGINE_DIR)/sample_submission/sample_submission/cg/api.py"
+
+test: ## Run the test suite (integration tests skip without local data/)
 	$(PY) -m pytest tests/ -q
 
-# --- Harness targets (tools land per the plan; guarded until they exist) -----
-verify: ## Cross-check sim math + rule variant against the LIVE engine (plan §W2-3)
-	@test -f tools/verify_env.py && $(PY) tools/verify_env.py || echo "[pending] tools/verify_env.py — wired once the simulator is local (plan §W2)"
+# --- Quality gate (dev-only; none of this ships in dist/main.py) --------------
+format: ## Auto-fix lint, sort imports, format (ruff --fix + isort + black)
+	$(RUFF) check --fix $(SRC)
+	$(ISORT) $(SRC)
+	$(BLACK) $(SRC)
 
-tournament: ## Win-rate matrix vs baselines + deck-vs-deck (plan §W4)
-	@test -f tools/tournament.py && $(PY) tools/tournament.py $(ARGS) || echo "[pending] tools/tournament.py — plan §W4"
+lint: ## Check lint + import order + formatting, no writes (CI-safe)
+	$(RUFF) check $(SRC)
+	$(ISORT) --check-only $(SRC)
+	$(BLACK) --check $(SRC)
+
+typecheck: ## Static type-check the agent + deckbuilder packages (mypy)
+	$(MYPY) ptcg_bot deckbuilder
+
+audit: ## Enforce SECURITY.md — no network/subprocess imports in the agent
+	@if grep -rEn '^[[:space:]]*(import|from)[[:space:]]+(socket|urllib|requests|subprocess)' ptcg_bot --include='*.py'; then \
+		echo "[audit] FORBIDDEN import in ptcg_bot/ — the agent must be pure-stdlib with no egress (SECURITY.md)"; exit 1; \
+	else echo "[audit] ok — no socket/urllib/requests/subprocess imports in ptcg_bot/"; fi
+
+security: ## Static (bandit) + dependency-CVE (pip-audit) scan; pip-audit needs network
+	# Skip B311: `random` is used for game-world determinization (search/belief),
+	# never for security or crypto — a pseudo-RNG is exactly right there.
+	$(BANDIT) -q -r ptcg_bot deckbuilder --skip B311
+	$(PIPAUDIT) -r requirements.txt
+
+ci: lint typecheck audit security test ## Engine-free gate CI runs (lint + types + audit + security + tests)
+
+deck: ## Build the submission deck.csv into dist/ (offline deckbuilder)
+	$(PY) -m tools.build_deck
+
+figures: ## Generate the writeup figures into writeup/figures/ (needs data)
+	$(PY) -m writeup.figures
+
+# --- Harness targets (tools land per the plan; guarded until they exist) -----
+verify: ## Validate our model against the LIVE engine (needs `make engine`; plan §W2-3)
+	$(PY) -m tools.verify_env
+
+tournament: ## Self-play win-rate vs baselines (needs engine+data; plan §W4)
+	$(PY) -m tools.tournament $(ARGS)
 
 soak: ## Robustness soak: no crash / no timeout over many seeds (plan §W4)
 	@test -f tools/soak.py && $(PY) tools/soak.py $(or $(ARGS),--seeds 25) || echo "[pending] tools/soak.py — plan §W4"
 
-tune: ## Coordinate-descent weight tuner -> tools/best_config.env (plan §W6)
-	@test -f tools/tune.py && $(PY) -u tools/tune.py $(ARGS) || echo "[pending] tools/tune.py — plan §W6"
+tune: ## Deck fitness tuning by self-play (rank×energy vs default; needs engine+data)
+	$(PY) -m tools.tune $(ARGS)
 
-bundle: ## Build dist/main.py (freeze weights) + submission tarballs (plan §W4)
-	@test -f tools/bundle.py && $(PY) tools/bundle.py || echo "[pending] tools/bundle.py — plan §W4"
+bundle: ## Package dist/submission/ (main.py + deck.csv + ptcg_bot + cg) + zip (needs engine+data)
+	$(PY) -m tools.bundle $(ARGS)
+
+harvest: ## Ladder-crawl + pull top-bracket replays into data/replays (needs kaggle auth)
+	$(PY) -m tools.harvest crawl --seed 54501137 --target-score 1150 --want 60 --max-hops 80 --out data/top_submissions_1150.json
+	$(PY) -m tools.harvest pull --subs data/top_submissions_1150.json --per-sub 60 --dest data/replays
+
+bc-dataset: ## Build the behavior-cloning dataset from data/replays (needs engine)
+	$(PY) -m tools.bc_dataset $(ARGS)
+
+train-policy: ## Train the BC option policy -> ptcg_bot/policy_weights.py
+	$(PY) -m tools.train_policy $(ARGS)
 
 check: test verify bundle ## Full local gate: tests + engine verify + bundle
 

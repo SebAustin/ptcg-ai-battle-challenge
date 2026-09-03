@@ -31,21 +31,21 @@ MAX_HAND_BEFORE_DISCARD: int | None = None  # no hand-size limit in this format
 
 # Prizes taken per knockout, by the KO'd Pokémon's rule.
 PRIZES_FOR_KO_DEFAULT: int = 1
-PRIZES_FOR_KO_EX: int = 2          # Pokémon ex
-PRIZES_FOR_KO_MEGA_EX: int = 3    # Mega Pokémon ex (KO is worth 3 prizes)
+PRIZES_FOR_KO_EX: int = 2  # Pokémon ex
+PRIZES_FOR_KO_MEGA_EX: int = 3  # Mega Pokémon ex (KO is worth 3 prizes)
 
 # --- Combat math --------------------------------------------------------------
-WEAKNESS_MULTIPLIER: int = 2       # SV era: weakness is ×2 (additive ×2, applied
-                                   # before resistance). Resistance, when present,
-                                   # subtracts a flat amount (usually 30).
+WEAKNESS_MULTIPLIER: int = 2  # SV era: weakness is ×2 (additive ×2, applied
+# before resistance). Resistance, when present,
+# subtracts a flat amount (usually 30).
 RESISTANCE_REDUCTION_DEFAULT: int = 30
 
 # --- Turn structure (per-turn once-only actions) ------------------------------
-ENERGY_ATTACHMENTS_PER_TURN: int = 1   # one manual energy from hand per turn
+ENERGY_ATTACHMENTS_PER_TURN: int = 1  # one manual energy from hand per turn
 SUPPORTERS_PER_TURN: int = 1
 STADIUMS_PER_TURN: int = 1
 RETREATS_PER_TURN: int = 1
-FIRST_PLAYER_ATTACKS_TURN: int = 2     # player going first may not attack on T1
+FIRST_PLAYER_ATTACKS_TURN: int = 2  # player going first may not attack on T1
 
 # A coin flip is the only RNG primitive the rules expose directly (besides
 # shuffles / random draws). Heads probability is fair.
@@ -74,8 +74,8 @@ class EnergyType(str, Enum):
 
 # Raw type tokens seen in the dataset that need remapping onto EnergyType values.
 _TYPE_ALIASES = {
-    "竜": "N",   # Dragon leaked as Japanese kanji in the EN export
-    "A": "N",    # rare alternate Dragon token observed in a few rows
+    "竜": "N",  # Dragon leaked as Japanese kanji in the EN export
+    "A": "N",  # rare alternate Dragon token observed in a few rows
 }
 
 # Basic Energy provides exactly its own type; these have in-deck cards (SVE set).

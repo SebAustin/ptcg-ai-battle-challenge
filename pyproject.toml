@@ -1,0 +1,56 @@
+# Developer tooling configuration for the PTCG battle agent.
+#
+# This file is CONFIG-ONLY — intentionally no [build-system] or [project] table.
+# The repo is not a pip-installable package: the submitted agent is a hand-frozen,
+# pure-stdlib dist/main.py (see tools/bundle.py, plan §W4). These sections only
+# configure the dev quality gate (format / imports / lint / types / tests) and
+# have zero effect on the bundled agent.
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, B bugbear, UP pyupgrade, N pep8-naming,
+# SIM flake8-simplify, C4 flake8-comprehensions.
+select = ["E", "F", "W", "B", "UP", "N", "SIM", "C4"]
+# black owns line length; long comments/strings/URLs are intentional.
+# UP042: rules.EnergyType deliberately uses `(str, Enum)`; switching to StrEnum
+# changes str()/f-string behavior of members (value vs "EnergyType.X"), and
+# rules.py is the locked source of truth — keep the intentional pattern.
+ignore = ["E501", "UP042"]
+
+[tool.ruff.lint.per-file-ignores]
+# Re-export surfaces: names are exposed via __all__, not used locally.
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.13"
+disallow_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+# The Makefile type-checks `ptcg_bot` + `deckbuilder`; these overrides keep the
+# untyped tests and the not-yet-written tool stubs from failing the gate.
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "tools.*"]
+disallow_untyped_defs = false
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# --strict-markers turns a typo'd/unregistered @pytest.mark into an error.
+addopts = "--strict-markers"
+markers = [
+    "unit: fast, isolated unit tests (no external data or engine)",
+    "integration: requires the local competition dataset (data/EN_Card_Data.csv)",
+]

@@ -19,10 +19,10 @@ import csv
 import re
 import warnings
 from collections import defaultdict
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import Iterable, Iterator
 
 from .rules import EnergyType, normalize_type
 
@@ -57,9 +57,11 @@ class EnergyCost:
         return self.colorless + sum(count for _, count in self.typed)
 
     def as_dict(self) -> dict[EnergyType, int]:
-        out = {t: c for t, c in self.typed}
+        out = dict(self.typed)
         if self.colorless:
-            out[EnergyType.COLORLESS] = out.get(EnergyType.COLORLESS, 0) + self.colorless
+            out[EnergyType.COLORLESS] = (
+                out.get(EnergyType.COLORLESS, 0) + self.colorless
+            )
         return out
 
     def __bool__(self) -> bool:
@@ -81,13 +83,19 @@ def parse_cost(raw: str | None) -> EnergyCost:
     for token in _BRACE_TOKEN.findall(text):
         etype = normalize_type(token)
         if etype is None:
-            warnings.warn(f"unknown energy token {token!r} in cost {raw!r}; counting as Colorless")
+            warnings.warn(
+                f"unknown energy token {token!r} in cost {raw!r}; counting as Colorless",
+                stacklevel=2,
+            )
             colorless += 1
         elif etype is EnergyType.COLORLESS:
             colorless += 1
         else:
             typed[etype] += 1
-    return EnergyCost(colorless=colorless, typed=tuple(sorted(typed.items(), key=lambda kv: kv[0].value)))
+    return EnergyCost(
+        colorless=colorless,
+        typed=tuple(sorted(typed.items(), key=lambda kv: kv[0].value)),
+    )
 
 
 def parse_damage(raw: str | None) -> tuple[int, str]:
@@ -104,7 +112,7 @@ def parse_damage(raw: str | None) -> tuple[int, str]:
     if not match:
         return 0, ""
     base = int(match.group(1))
-    modifier = text[match.end():].strip()
+    modifier = text[match.end() :].strip()
     return base, modifier
 
 
@@ -142,16 +150,20 @@ class Card:
     name: str
     expansion: str
     collection_no: str
-    subtype: str            # raw Stage/Type field, e.g. "Basic Pokémon", "Item"
-    category: str           # Category column: Tera(...)/Ancient/Trainer's Pokémon/...
-    rule: str               # "Pokémon ex" / "Mega Pokémon ex" / "ACE SPEC" / ""
-    previous_stage: str     # pre-evolution name (evolution is matched by name)
+    subtype: str  # raw Stage/Type field, e.g. "Basic Pokémon", "Item"
+    category: str  # Category column: Tera(...)/Ancient/Trainer's Pokémon/...
+    rule: str  # "Pokémon ex" / "Mega Pokémon ex" / "ACE SPEC" / ""
+    previous_stage: str  # pre-evolution name (evolution is matched by name)
     hp: int | None
     poke_type: EnergyType | None
     weakness: EnergyType | None
     resistance: EnergyType | None
     retreat: int | None
     moves: tuple[Move, ...]
+    # Card-level rules text for Trainers / Special Energy (the "Effect
+    # Explanation" column). Empty for Pokémon (whose text lives on ``moves``)
+    # and for Basic Energy. Lets the deckbuilder classify Trainers by role.
+    text: str = ""
 
     # --- supertype helpers ---------------------------------------------------
     @property
@@ -177,7 +189,9 @@ class Card:
     @property
     def stage(self) -> int | None:
         """0 for Basic, 1 for Stage 1, 2 for Stage 2; ``None`` for non-Pokémon."""
-        return {"Basic Pokémon": 0, "Stage 1 Pokémon": 1, "Stage 2 Pokémon": 2}.get(self.subtype)
+        return {"Basic Pokémon": 0, "Stage 1 Pokémon": 1, "Stage 2 Pokémon": 2}.get(
+            self.subtype
+        )
 
     @property
     def is_ex(self) -> bool:
@@ -260,6 +274,10 @@ def _build_card(rows: list[dict[str, str]]) -> Card:
         for r in rows
         if _clean(r.get("Move Name"))
     )
+    # Trainers / Special Energy carry their rules in the head row's Effect
+    # Explanation (the move-name is blank, so no Move is built above). Pokémon
+    # text is already captured per-move, so leave their card-level text empty.
+    card_text = "" if moves else _clean(head.get("Effect Explanation"))
     return Card(
         card_id=int(head["Card ID"]),
         name=_clean(head.get("Card Name")),
@@ -275,6 +293,7 @@ def _build_card(rows: list[dict[str, str]]) -> Card:
         resistance=normalize_type(head.get("Resistance (Type)")),
         retreat=int(retreat_raw) if retreat_raw.isdigit() else None,
         moves=moves,
+        text=card_text,
     )
 
 
