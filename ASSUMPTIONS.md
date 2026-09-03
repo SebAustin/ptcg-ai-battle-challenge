@@ -521,3 +521,26 @@ simulator / competition page resolves the open items.
     curve was not measured -- 130k decisions may simply be insufficient for a 57-input
     late-fusion model), or use imitation only as a TIEBREAKER among near-equal search
     values rather than a prior/rollout override. Daily publish: v7 duplicate submitted.
+
+40. **Simulation competition closed — the flywheel campaign concludes.** `kaggle
+    competitions list` confirms the deadline: 2026-08-31 23:59:00 (one day before this
+    check). Corroborating evidence: our latest submission's episode generation stops
+    exactly at that timestamp (last episode 2026-08-31 23:49:59); the public leaderboard
+    is byte-identical to the Jul 17 snapshot (frozen, no further scoring); and
+    `publicScore == privateScore` on every recent submission (540.5/540.5, 550.9/550.9,
+    614.5/614.5) — the private score reveal that only happens post-deadline. No further
+    submissions are meaningful or (likely) accepted. The daily cron is cancelled.
+
+    **Final standing:** v7 (gen2 evaluator + Dwebble/Crustle deck, worlds=12/depth=8)
+    settled around 540-665 across its final live duplicates; leader 1398.2 among 6,807
+    entered teams. Fourteen turns (§18-§39) ran a fully gated experimentation campaign:
+    meta-vs-meta training shipped twice (v6->v7, +250 points combined); every subsequent
+    lever -- 7 evaluator retrains, 3 search-budget variants, 3 behavioral policies, 2 deck
+    challengers, a within-turn beam search at two budgets, and finally full behavior
+    cloning from 3,579 top-bracket replays (129,618 decisions, clean offline signal that
+    never survived integration into the live agent) -- was measured and gated OUT with
+    pasted evidence. The honest conclusion, reached from every angle tried: v7 is the
+    measured ceiling of this architecture at these search budgets. The Strategy division
+    (pokemon-tcg-ai-battle-challenge-strategy, deadline 2026-09-13) remains OPEN --
+    WRITEUP.md, four figures, and CAPTIONS.md are ready; filing the Kaggle Writeup and
+    the repo-public decision remain the user's own outward-facing actions.
